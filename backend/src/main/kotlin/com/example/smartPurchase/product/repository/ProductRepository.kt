@@ -1,6 +1,9 @@
 package com.example.smartPurchase.product.repository
 
 import com.example.smartPurchase.product.entity.Product
+import com.example.smartPurchase.product.entity.ProductSize
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.query.Param
@@ -9,77 +12,73 @@ import java.math.BigDecimal
 interface ProductRepository : JpaRepository<Product, Long> {
 
     @Query(
-        value = """
-        SELECT
-            p.id AS id,
-            p.name AS name,
-            p.category AS category,
-            p.price AS price,
-            STRING_AGG(DISTINCT wi.size, ',') AS availableSizes
-        FROM products p
-        JOIN warehouse_inventory wi
-            ON p.id = wi.product_id
-        JOIN warehouses w
-            ON wi.warehouse_id = w.id
+        """
+        SELECT p
+        FROM Product p
         WHERE
             (:category IS NULL OR p.category = :category)
-        AND (:size IS NULL OR wi.size = :size)
-        AND (:city IS NULL OR w.city = :city)
         AND (:minPrice IS NULL OR p.price >= :minPrice)
         AND (:maxPrice IS NULL OR p.price <= :maxPrice)
-        AND wi.quantity > 0
-        GROUP BY
-            p.id,
-            p.name,
-            p.category,
-            p.price
-    """,
-        nativeQuery = true
+        AND EXISTS (
+            SELECT 1
+            FROM WarehouseInventory wi
+            JOIN wi.warehouse w
+            WHERE wi.product = p
+            AND wi.quantity > 0
+            AND (:size IS NULL OR wi.size = :size)
+            AND (:city IS NULL OR w.city = :city)
+        )
+        """
     )
     fun search(
         @Param("category") category: String?,
         @Param("minPrice") minPrice: BigDecimal?,
         @Param("maxPrice") maxPrice: BigDecimal?,
-        @Param("size") size: String?,
-        @Param("city") city: String?
-    ): List<ProductSearchProjection>
+        @Param("size") size: ProductSize?,
+        @Param("city") city: String?,
+        pageable: Pageable
+    ): Page<Product>
 
     @Query(
-        value = """
-            SELECT
-                p.id AS id,
-                p.name AS name,
-                p.category AS category,
-                p.price AS price,
-                STRING_AGG(DISTINCT wi.size, ',') AS availableSizes
-            FROM products base
-            JOIN products p
-                ON p.category = base.category
-                AND p.id <> base.id
-            JOIN warehouse_inventory wi
-                ON p.id = wi.product_id
-            WHERE base.id = :productId
-            AND p.price BETWEEN base.price - :priceRange AND base.price + :priceRange
+        """
+            SELECT DISTINCT
+                wi.product.id AS productId,
+                wi.size AS size
+            FROM WarehouseInventory wi
+            WHERE wi.product.id IN (:productIds)
             AND wi.quantity > 0
-            GROUP BY
-                p.id,
-                p.name,
-                p.category,
-                p.price,
-                base.price
+            ORDER BY wi.product.id, wi.size
+        """
+    )
+    fun findAvailableSizesByProductIds(
+        @Param("productIds") productIds: Collection<Long>
+    ): List<ProductSizeProjection>
+
+    @Query(
+        """
+            SELECT p
+            FROM Product base, Product p
+            WHERE base.id = :productId
+            AND p.category = base.category
+            AND p.id <> base.id
+            AND p.price BETWEEN base.price - :priceRange AND base.price + :priceRange
+            AND EXISTS (
+                SELECT 1
+                FROM WarehouseInventory wi
+                WHERE wi.product = p
+                AND wi.quantity > 0
+            )
             ORDER BY ABS(p.price - base.price), p.id
-            LIMIT :limit
-        """,
-        nativeQuery = true
+        """
     )
     fun findSimilarProducts(
         @Param("productId") productId: Long,
         @Param("priceRange") priceRange: BigDecimal,
-        @Param("limit") limit: Int
-    ): List<ProductSearchProjection>
+        pageable: Pageable
+    ): List<Product>
 
     @Query(
-        value = """
+        """
             SELECT
                 p.id AS id,
                 p.name AS name,
@@ -87,12 +86,11 @@ interface ProductRepository : JpaRepository<Product, Long> {
                 p.price AS price,
                 wi.size AS size,
                 wi.quantity AS quantity
-            FROM products p
-            LEFT JOIN warehouse_inventory wi
-                ON p.id = wi.product_id
+            FROM Product p
+            LEFT JOIN WarehouseInventory wi
+                ON wi.product = p
             WHERE p.id = :productId
-        """,
-        nativeQuery = true
+        """
     )
     fun findProductDetails(
         @Param("productId") productId: Long

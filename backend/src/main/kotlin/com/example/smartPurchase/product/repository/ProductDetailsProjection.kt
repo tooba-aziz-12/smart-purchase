@@ -1,7 +1,7 @@
 package com.example.smartPurchase.product.repository
 
+import com.example.smartPurchase.product.entity.ProductSize
 import java.math.BigDecimal
-import java.time.LocalDate
 
 interface ProductDetailsProjection {
 
@@ -13,7 +13,7 @@ interface ProductDetailsProjection {
 
     fun getPrice(): BigDecimal
 
-    fun getSize(): String
+    fun getSize(): ProductSize?
 
-    fun getQuantity(): Int
+    fun getQuantity(): Int?
 }

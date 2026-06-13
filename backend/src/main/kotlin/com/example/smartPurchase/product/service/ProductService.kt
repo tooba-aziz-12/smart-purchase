@@ -1,16 +1,19 @@
 package com.example.smartPurchase.product.service
 
+import com.example.smartPurchase.common.dto.PageResponse
 import com.example.smartPurchase.product.dto.PriceBreakdownResponse
 import com.example.smartPurchase.product.dto.ProductDetailsResponse
 import com.example.smartPurchase.product.dto.ProductResponse
 import com.example.smartPurchase.product.dto.SizeOptionResponse
 import com.example.smartPurchase.product.config.PricingProperties
+import com.example.smartPurchase.product.entity.Product
 import com.example.smartPurchase.product.entity.ProductSize
 import com.example.smartPurchase.product.exception.InvalidProductFilterException
 import com.example.smartPurchase.product.exception.ProductNotFoundException
-import com.example.smartPurchase.product.repository.ProductSearchProjection
 import com.example.smartPurchase.product.repository.ProductRepository
 import com.example.smartPurchase.util.DeliveryEstimator
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 
@@ -27,23 +30,58 @@ class ProductService(
         minPrice: BigDecimal?,
         maxPrice: BigDecimal?,
         size: String?,
-        city: String?
-    ): List<ProductResponse> {
+        city: String?,
+        page: Int,
+        pageSize: Int
+    ): PageResponse<ProductResponse> {
         validateFilters(
-            category,
             minPrice,
             maxPrice,
             size,
-            city
+            page,
+            pageSize
         )
 
-        return productRepository.search(
+        val parsedSize = size?.let(ProductSize::valueOf)
+
+        val productPage = productRepository.search(
             category,
             minPrice,
             maxPrice,
-            size,
-            city
-        ).map(::toProductResponse)
+            parsedSize,
+            city,
+            PageRequest.of(
+                page,
+                pageSize,
+                Sort.by("id").ascending()
+            )
+        )
+
+        val productIds = productPage.content.map { it.id }
+
+        val availableSizes = if (productIds.isEmpty()) {
+            emptyMap()
+        } else {
+            productRepository.findAvailableSizesByProductIds(productIds)
+                .groupBy(
+                    { it.getProductId() },
+                    { it.getSize().name }
+                )
+        }
+
+        return PageResponse(
+            content = productPage.content.map { product ->
+                toProductResponse(
+                    product,
+                    availableSizes[product.id].orEmpty()
+                )
+            },
+            page = productPage.number,
+            size = productPage.size,
+            totalElements = productPage.totalElements,
+            totalPages = productPage.totalPages,
+            last = productPage.isLast
+        )
     }
 
     fun getSimilarProducts(productId: Long): List<ProductResponse> {
@@ -51,33 +89,60 @@ class ProductService(
             throw ProductNotFoundException("Product not found")
         }
 
-        return productRepository.findSimilarProducts(
+        val similarProducts = productRepository.findSimilarProducts(
             productId,
             SIMILAR_PRODUCT_PRICE_RANGE,
-            SIMILAR_PRODUCT_LIMIT
-        ).map(::toProductResponse)
+            PageRequest.of(
+                0,
+                SIMILAR_PRODUCT_LIMIT
+            )
+        )
+
+        val productIds = similarProducts.map { it.id }
+
+        val availableSizes = if (productIds.isEmpty()) {
+            emptyMap()
+        } else {
+            productRepository.findAvailableSizesByProductIds(productIds)
+                .groupBy(
+                    { it.getProductId() },
+                    { it.getSize().name }
+                )
+        }
+
+        return similarProducts.map { product ->
+            toProductResponse(
+                product,
+                availableSizes[product.id].orEmpty()
+            )
+        }
     }
 
     private fun toProductResponse(
-        product: ProductSearchProjection
+        product: Product,
+        availableSizes: List<String>
     ): ProductResponse =
         ProductResponse(
-            id = product.getId(),
-            name = product.getName(),
-            category = product.getCategory(),
-            price = product.getPrice(),
+            id = product.id,
+            name = product.name,
+            category = product.category,
+            price = product.price,
             estimatedDelivery = deliveryEstimator.estimateDelivery(),
-            availableSizes = product.getAvailableSizes()
-                .split(",")
-                .map { it.trim() }
+            availableSizes = orderSizes(availableSizes)
         )
 
+    private fun orderSizes(
+        sizes: List<String>
+    ): List<String> =
+        ProductSize.allValues()
+            .filter { it in sizes.toSet() }
+
     private fun validateFilters(
-        category: String?,
         minPrice: BigDecimal?,
         maxPrice: BigDecimal?,
         size: String?,
-        city: String?
+        page: Int,
+        pageSize: Int
     ) {
         if (minPrice != null && minPrice < BigDecimal.ZERO) {
             throw InvalidProductFilterException("minPrice cannot be negative")
@@ -94,6 +159,14 @@ class ProductService(
         if (size != null && !ProductSize.isSupported(size)) {
             throw InvalidProductFilterException("Unsupported size: $size")
         }
+
+        if (page < 0) {
+            throw InvalidProductFilterException("page cannot be negative")
+        }
+
+        if (pageSize < 1 || pageSize > MAX_PAGE_SIZE) {
+            throw InvalidProductFilterException("size must be between 1 and $MAX_PAGE_SIZE")
+        }
     }
 
     fun getProductDetails(productId: Long): ProductDetailsResponse {
@@ -106,8 +179,11 @@ class ProductService(
         val product = rows.first()
 
         val availableSizes = rows
-            .filter { it.getQuantity() > 0 }
-            .map { it.getSize() }
+            .mapNotNull { row ->
+                row.getSize()
+                    ?.takeIf { row.getQuantity().orZero() > 0 }
+                    ?.name
+            }
             .toSet()
 
         val allSizes = ProductSize.allValues()
@@ -155,5 +231,8 @@ class ProductService(
     companion object {
         private val SIMILAR_PRODUCT_PRICE_RANGE = BigDecimal("1000")
         private const val SIMILAR_PRODUCT_LIMIT = 4
+        private const val MAX_PAGE_SIZE = 50
     }
 }
+
+private fun Int?.orZero(): Int = this ?: 0

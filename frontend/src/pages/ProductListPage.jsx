@@ -5,6 +5,8 @@ import {
 } from "../api/productApi.js";
 import { useNavigate } from "react-router-dom";
 
+const PAGE_SIZE = 6;
+
 function getProductLoadErrorMessage(error) {
 
     if (error instanceof ApiError && error.status === 400) {
@@ -21,6 +23,13 @@ function getProductLoadErrorMessage(error) {
 function ProductListPage() {
 
     const [products, setProducts] = useState([]);
+    const [pageInfo, setPageInfo] = useState({
+        page: 0,
+        size: PAGE_SIZE,
+        totalElements: 0,
+        totalPages: 0,
+        last: true
+    });
     const [errorMessage, setErrorMessage] = useState("");
 
     const [category, setCategory] = useState("");
@@ -30,14 +39,46 @@ function ProductListPage() {
     const [maxPrice, setMaxPrice] = useState("");
     const navigate = useNavigate();
 
-    const loadProducts = useCallback((filters) => {
-        fetchProducts(filters)
-            .then(products => {
-                setProducts(products);
+    const currentFilters = useCallback(() => ({
+        category,
+        size,
+        city,
+        minPrice,
+        maxPrice
+    }), [
+        category,
+        size,
+        city,
+        minPrice,
+        maxPrice
+    ]);
+
+    const loadProducts = useCallback((filters, page = 0) => {
+        fetchProducts({
+            ...filters,
+            page,
+            pageSize: PAGE_SIZE
+        })
+            .then(productPage => {
+                setProducts(productPage.content);
+                setPageInfo({
+                    page: productPage.page,
+                    size: productPage.size,
+                    totalElements: productPage.totalElements,
+                    totalPages: productPage.totalPages,
+                    last: productPage.last
+                });
                 setErrorMessage("");
             })
             .catch(error => {
                 setProducts([]);
+                setPageInfo({
+                    page: 0,
+                    size: PAGE_SIZE,
+                    totalElements: 0,
+                    totalPages: 0,
+                    last: true
+                });
                 setErrorMessage(
                     getProductLoadErrorMessage(error)
                 );
@@ -55,13 +96,17 @@ function ProductListPage() {
     }, [loadProducts]);
 
     const applyFilters = () => {
-        loadProducts({
-            category,
-            size,
-            city,
-            minPrice,
-            maxPrice
-        });
+        loadProducts(
+            currentFilters(),
+            0
+        );
+    };
+
+    const goToPage = (nextPage) => {
+        loadProducts(
+            currentFilters(),
+            nextPage
+        );
     };
 
     return (
@@ -315,6 +360,36 @@ function ProductListPage() {
                         }}
                     >
                         No products found.
+                    </div>
+                )}
+
+                {!errorMessage && pageInfo.totalPages > 1 && (
+                    <div
+                        style={{
+                            alignItems: "center",
+                            display: "flex",
+                            gap: "16px",
+                            justifyContent: "center",
+                            marginTop: "32px"
+                        }}
+                    >
+                        <button
+                            disabled={pageInfo.page === 0}
+                            onClick={() => goToPage(pageInfo.page - 1)}
+                        >
+                            Previous
+                        </button>
+
+                        <span>
+                            Page {pageInfo.page + 1} of {pageInfo.totalPages}
+                        </span>
+
+                        <button
+                            disabled={pageInfo.last}
+                            onClick={() => goToPage(pageInfo.page + 1)}
+                        >
+                            Next
+                        </button>
                     </div>
                 )}
             </div>

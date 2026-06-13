@@ -1,5 +1,6 @@
 package com.example.smartPurchase.product.controller
 
+import com.example.smartPurchase.common.dto.PageResponse
 import com.example.smartPurchase.product.dto.ProductDetailsResponse
 import com.example.smartPurchase.product.dto.ProductResponse
 import com.example.smartPurchase.product.service.ProductService
@@ -22,14 +23,18 @@ class ProductController(
         @RequestParam(required = false) size: String?,
         @RequestParam(required = false) city: String?,
         @RequestParam(required = false) minPrice: BigDecimal?,
-        @RequestParam(required = false) maxPrice: BigDecimal?
-    ): List<ProductResponse> =
+        @RequestParam(required = false) maxPrice: BigDecimal?,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "12") pageSize: Int
+    ): PageResponse<ProductResponse> =
         productService.getProducts(
             category,
             minPrice,
             maxPrice,
             size,
-            city
+            city,
+            page,
+            pageSize
         )
 
     @GetMapping("/{id}")

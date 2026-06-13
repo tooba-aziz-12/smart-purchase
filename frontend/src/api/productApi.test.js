@@ -34,11 +34,13 @@ describe("productApi", () => {
             size: "",
             city: "Lahore",
             minPrice: "7000",
-            maxPrice: null
+            maxPrice: null,
+            page: 1,
+            pageSize: 6
         });
 
         expect(globalThis.fetch).toHaveBeenCalledWith(
-            "http://localhost:8095/products?category=Lawn&city=Lahore&minPrice=7000"
+            "http://localhost:8095/products?category=Lawn&city=Lahore&minPrice=7000&page=1&pageSize=6"
         );
     });
 

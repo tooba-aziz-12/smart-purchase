@@ -1,9 +1,11 @@
 package com.example.smartPurchase.service
 
 import com.example.smartPurchase.product.config.PricingProperties
+import com.example.smartPurchase.product.entity.Product
+import com.example.smartPurchase.product.entity.ProductSize
+import com.example.smartPurchase.product.repository.ProductSizeProjection
 import com.example.smartPurchase.product.repository.ProductDetailsProjection
 import com.example.smartPurchase.product.repository.ProductRepository
-import com.example.smartPurchase.product.repository.ProductSearchProjection
 import com.example.smartPurchase.product.service.ProductService
 import com.example.smartPurchase.util.DeliveryEstimator
 import io.mockk.every
@@ -14,6 +16,9 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.data.domain.PageImpl
+import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -41,18 +46,25 @@ class ProductServiceTest {
     @Test
     fun `should return products`() {
 
-        val projection = object : ProductSearchProjection {
+        val product = Product(
+            id = 1L,
+            name = "Blue Lawn Suit",
+            category = "Lawn",
+            price = BigDecimal("7500")
+        )
 
-            override fun getId() = 1L
+        val mediumSize = object : ProductSizeProjection {
 
-            override fun getName() = "Blue Lawn Suit"
+            override fun getProductId() = 1L
 
-            override fun getCategory() = "Lawn"
+            override fun getSize() = ProductSize.M
+        }
 
-            override fun getPrice() = BigDecimal("7500")
+        val largeSize = object : ProductSizeProjection {
 
-            override fun getAvailableSizes() =
-                "M,L"
+            override fun getProductId() = 1L
+
+            override fun getSize() = ProductSize.L
         }
 
         every {
@@ -61,9 +73,21 @@ class ProductServiceTest {
                 null,
                 null,
                 null,
-                null
+                null,
+                PageRequest.of(
+                    0,
+                    12,
+                    Sort.by("id").ascending()
+                )
             )
-        } returns listOf(projection)
+        } returns PageImpl(listOf(product))
+
+        every {
+            productRepository.findAvailableSizesByProductIds(listOf(1L))
+        } returns listOf(
+            mediumSize,
+            largeSize
+        )
 
         every {
             deliveryEstimator.estimateDelivery()
@@ -74,12 +98,14 @@ class ProductServiceTest {
             null,
             null,
             null,
-            null
+            null,
+            0,
+            12
         )
 
-        assertEquals(1, result.size)
-        assertEquals("Blue Lawn Suit", result[0].name)
-        assertEquals(listOf("M", "L"), result[0].availableSizes)
+        assertEquals(1, result.content.size)
+        assertEquals("Blue Lawn Suit", result.content[0].name)
+        assertEquals(listOf("M", "L"), result.content[0].availableSizes)
     }
 
     @Test
@@ -96,7 +122,7 @@ class ProductServiceTest {
             override fun getPrice() =
                 BigDecimal("7500")
 
-            override fun getSize() = "M"
+            override fun getSize() = ProductSize.M
 
             override fun getQuantity() = 5
         }
@@ -112,7 +138,7 @@ class ProductServiceTest {
             override fun getPrice() =
                 BigDecimal("7500")
 
-            override fun getSize() = "L"
+            override fun getSize() = ProductSize.L
 
             override fun getQuantity() = 2
         }
@@ -164,7 +190,7 @@ class ProductServiceTest {
             override fun getPrice() =
                 BigDecimal("7500")
 
-            override fun getSize() = "M"
+            override fun getSize() = ProductSize.M
 
             override fun getQuantity() = 5
         }
@@ -227,23 +253,23 @@ class ProductServiceTest {
             override fun getPrice() =
                 BigDecimal("7500")
 
-            override fun getSize() = "M"
+            override fun getSize() = ProductSize.M
 
             override fun getQuantity() = 3
         }
 
-        val similarProjection = object : ProductSearchProjection {
+        val similarProduct = Product(
+            id = 2L,
+            name = "Green Lawn Suit",
+            category = "Lawn",
+            price = BigDecimal("6900")
+        )
 
-            override fun getId() = 2L
+        val mediumSize = object : ProductSizeProjection {
 
-            override fun getName() = "Green Lawn Suit"
+            override fun getProductId() = 2L
 
-            override fun getCategory() = "Lawn"
-
-            override fun getPrice() =
-                BigDecimal("6900")
-
-            override fun getAvailableSizes() = "M"
+            override fun getSize() = ProductSize.M
         }
 
         every {
@@ -254,9 +280,16 @@ class ProductServiceTest {
             productRepository.findSimilarProducts(
                 1,
                 BigDecimal("1000"),
-                4
+                PageRequest.of(
+                    0,
+                    4
+                )
             )
-        } returns listOf(similarProjection)
+        } returns listOf(similarProduct)
+
+        every {
+            productRepository.findAvailableSizesByProductIds(listOf(2L))
+        } returns listOf(mediumSize)
 
         every {
             deliveryEstimator.estimateDelivery()

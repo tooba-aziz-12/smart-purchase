@@ -40,16 +40,18 @@ describe("ProductListPage", () => {
 
     it("renders products and applies filters", async () => {
 
-        fetchProducts.mockResolvedValue([
-            {
-                id: 1,
-                name: "Blue Lawn Suit",
-                category: "Lawn",
-                price: 7500,
-                estimatedDelivery: "2026-06-18",
-                availableSizes: ["M", "L"]
-            }
-        ]);
+        fetchProducts.mockResolvedValue(
+            productPage([
+                {
+                    id: 1,
+                    name: "Blue Lawn Suit",
+                    category: "Lawn",
+                    price: 7500,
+                    estimatedDelivery: "2026-06-18",
+                    availableSizes: ["M", "L"]
+                }
+            ])
+        );
 
         render(
             <MemoryRouter>
@@ -90,8 +92,90 @@ describe("ProductListPage", () => {
                 size: "M",
                 city: "Lahore",
                 minPrice: "7000",
-                maxPrice: "8000"
+                maxPrice: "8000",
+                page: 0,
+                pageSize: 6
             });
+        });
+    });
+
+    it("loads the next page", async () => {
+
+        fetchProducts.mockResolvedValueOnce(
+            productPage(
+                [
+                    {
+                        id: 1,
+                        name: "Blue Lawn Suit",
+                        category: "Lawn",
+                        price: 7500,
+                        estimatedDelivery: "2026-06-18",
+                        availableSizes: ["M", "L"]
+                    }
+                ],
+                {
+                    page: 0,
+                    totalElements: 12,
+                    totalPages: 2,
+                    last: false
+                }
+            )
+        );
+
+        fetchProducts.mockResolvedValueOnce(
+            productPage(
+                [
+                    {
+                        id: 7,
+                        name: "Formal Silk Suit",
+                        category: "Formal",
+                        price: 9500,
+                        estimatedDelivery: "2026-06-18",
+                        availableSizes: ["S"]
+                    }
+                ],
+                {
+                    page: 1,
+                    totalElements: 12,
+                    totalPages: 2,
+                    last: true
+                }
+            )
+        );
+
+        render(
+            <MemoryRouter>
+                <ProductListPage />
+            </MemoryRouter>
+        );
+
+        expect(
+            await screen.findByText("Blue Lawn Suit")
+        ).toBeTruthy();
+
+        const user = userEvent.setup();
+
+        await user.click(
+            screen.getByRole(
+                "button",
+                {
+                    name: "Next"
+                }
+            )
+        );
+
+        expect(
+            await screen.findByText("Formal Silk Suit")
+        ).toBeTruthy();
+
+        expect(fetchProducts).toHaveBeenLastCalledWith({
+            category: "",
+            size: "",
+            city: "",
+            minPrice: "",
+            maxPrice: "",
+            page: 1,
+            pageSize: 6
         });
     });
 
@@ -169,3 +253,17 @@ describe("ProductListPage", () => {
         );
     });
 });
+
+function productPage(
+    content,
+    overrides = {}
+) {
+    return {
+        content,
+        page: overrides.page ?? 0,
+        size: overrides.size ?? 6,
+        totalElements: overrides.totalElements ?? content.length,
+        totalPages: overrides.totalPages ?? 1,
+        last: overrides.last ?? true
+    };
+}

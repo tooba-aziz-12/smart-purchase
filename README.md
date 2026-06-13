@@ -30,6 +30,7 @@ Rather than building a complete marketplace, I focused on solving the decision-m
     * City
     * Minimum price
     * Maximum price
+* Paginated product listing API and UI controls
 * Product details page
 * Size availability visibility
 * Estimated delivery date
@@ -166,6 +167,7 @@ Responsibilities:
 
 * Display products
 * Apply filters
+* Page through catalogue results
 * Navigate to product details
 * Show user-facing loading failure messages
 
@@ -227,9 +229,35 @@ Optional filters:
 &city=
 &minPrice=
 &maxPrice=
+&page=
+&pageSize=
 ```
 
-Returns:
+`page` is zero-based. `pageSize` is used instead of `size` because `size` already means product size (`S`, `M`, `L`) in this API.
+
+Response:
+
+```json
+{
+  "content": [
+    {
+      "id": 1,
+      "name": "Blue Lawn Suit",
+      "category": "Lawn",
+      "price": 7500,
+      "estimatedDelivery": "2026-06-18",
+      "availableSizes": ["M", "L"]
+    }
+  ],
+  "page": 0,
+  "size": 6,
+  "totalElements": 12,
+  "totalPages": 2,
+  "last": false
+}
+```
+
+Each product includes:
 
 * Product details
 * Available sizes
@@ -328,6 +356,16 @@ quantity
 Product availability is derived from warehouse inventory.
 
 This avoids duplication and keeps inventory as the source of truth.
+
+---
+
+### Filtering And Pagination
+
+The product listing API uses Spring Data pagination for catalogue reads.
+
+Filtering is done through a JPQL product query with an `EXISTS` inventory predicate, then available sizes are loaded only for the products on the returned page.
+
+This avoids paginating over duplicated inventory rows and avoids vendor-specific string aggregation for the main listing query.
 
 ---
 
@@ -439,7 +477,7 @@ cd backend
 Current backend suite:
 
 ```text
-25 tests passing
+29 tests passing
 ```
 
 Frontend:
@@ -454,7 +492,7 @@ npm run build
 Current frontend suite:
 
 ```text
-10 tests passing
+12 tests passing
 lint passing
 production build passing
 ```
@@ -516,6 +554,7 @@ API helper tests validate:
 Component tests validate:
 
 * Product listing rendering and filter submission
+* Product listing pagination controls
 * Product details rendering
 * Size selection behavior
 * Price breakdown rendering
@@ -578,8 +617,6 @@ Given the 3–4 hour time limit, I prioritized solving the core customer confide
 * Order tracking
 
 ### Engineering
-
-* Pagination
 * Monitoring
 * Security
 * API versioning

@@ -1,6 +1,7 @@
 package com.example.smartPurchase.controller
 
 import com.example.smartPurchase.common.dto.ErrorResponse
+import com.example.smartPurchase.common.dto.PageResponse
 import com.example.smartPurchase.product.dto.ProductDetailsResponse
 import com.example.smartPurchase.product.dto.ProductResponse
 import junit.framework.TestCase.assertEquals
@@ -12,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.MvcResult
 import tools.jackson.core.type.TypeReference
 import tools.jackson.databind.ObjectMapper
 import java.math.BigDecimal
@@ -35,13 +37,37 @@ class ProductControllerIT {
             }
             .andReturn()
 
-        val products: List<ProductResponse> =
-            objectMapper.readValue(
-                response.response.contentAsString,
-                object : TypeReference<List<ProductResponse>>() {}
-            )
+        val productPage = readProductPage(response)
+        val products = productPage.content
 
         assertEquals(12, products.size)
+        assertEquals(0, productPage.page)
+        assertEquals(12, productPage.size)
+        assertEquals(12, productPage.totalElements)
+        assertEquals(1, productPage.totalPages)
+        assertTrue(productPage.last)
+    }
+
+    @Test
+    fun `should return requested product page`() {
+
+        val response = mockMvc.get("/products") {
+            param("page", "1")
+            param("pageSize", "5")
+        }
+            .andExpect {
+                status { isOk() }
+            }
+            .andReturn()
+
+        val productPage = readProductPage(response)
+
+        assertEquals(1, productPage.page)
+        assertEquals(5, productPage.size)
+        assertEquals(12, productPage.totalElements)
+        assertEquals(3, productPage.totalPages)
+        assertEquals(5, productPage.content.size)
+        assertFalse(productPage.last)
     }
 
     @Test
@@ -55,11 +81,7 @@ class ProductControllerIT {
             }
             .andReturn()
 
-        val products: List<ProductResponse> =
-            objectMapper.readValue(
-                response.response.contentAsString,
-                object : TypeReference<List<ProductResponse>>() {}
-            )
+        val products = readProductPage(response).content
 
         assertTrue(
             products.all {
@@ -79,11 +101,7 @@ class ProductControllerIT {
             }
             .andReturn()
 
-        val products: List<ProductResponse> =
-            objectMapper.readValue(
-                response.response.contentAsString,
-                object : TypeReference<List<ProductResponse>>() {}
-            )
+        val products = readProductPage(response).content
 
         assertTrue(products.isNotEmpty())
     }
@@ -99,11 +117,7 @@ class ProductControllerIT {
             }
             .andReturn()
 
-        val products: List<ProductResponse> =
-            objectMapper.readValue(
-                response.response.contentAsString,
-                object : TypeReference<List<ProductResponse>>() {}
-            )
+        val products = readProductPage(response).content
 
         assertTrue(products.isNotEmpty())
 
@@ -125,11 +139,7 @@ class ProductControllerIT {
             }
             .andReturn()
 
-        val products: List<ProductResponse> =
-            objectMapper.readValue(
-                response.response.contentAsString,
-                object : TypeReference<List<ProductResponse>>() {}
-            )
+        val products = readProductPage(response).content
 
         assertTrue(products.isNotEmpty())
 
@@ -151,11 +161,7 @@ class ProductControllerIT {
             }
             .andReturn()
 
-        val products: List<ProductResponse> =
-            objectMapper.readValue(
-                response.response.contentAsString,
-                object : TypeReference<List<ProductResponse>>() {}
-            )
+        val products = readProductPage(response).content
 
         assertTrue(products.isNotEmpty())
 
@@ -178,11 +184,7 @@ class ProductControllerIT {
             }
             .andReturn()
 
-        val products: List<ProductResponse> =
-            objectMapper.readValue(
-                response.response.contentAsString,
-                object : TypeReference<List<ProductResponse>>() {}
-            )
+        val products = readProductPage(response).content
 
         assertTrue(products.isNotEmpty())
 
@@ -240,6 +242,28 @@ class ProductControllerIT {
     }
 
     @Test
+    fun `should reject negative page`() {
+
+        mockMvc.get("/products") {
+            param("page", "-1")
+        }
+            .andExpect {
+                status { isBadRequest() }
+            }
+    }
+
+    @Test
+    fun `should reject unsupported page size`() {
+
+        mockMvc.get("/products") {
+            param("pageSize", "0")
+        }
+            .andExpect {
+                status { isBadRequest() }
+            }
+    }
+
+    @Test
     fun `should return empty results for unknown category`() {
 
         val response = mockMvc.get("/products") {
@@ -250,11 +274,7 @@ class ProductControllerIT {
             }
             .andReturn()
 
-        val products: List<ProductResponse> =
-            objectMapper.readValue(
-                response.response.contentAsString,
-                object : TypeReference<List<ProductResponse>>() {}
-            )
+        val products = readProductPage(response).content
 
         assertTrue(products.isEmpty())
     }
@@ -270,11 +290,7 @@ class ProductControllerIT {
             }
             .andReturn()
 
-        val products: List<ProductResponse> =
-            objectMapper.readValue(
-                response.response.contentAsString,
-                object : TypeReference<List<ProductResponse>>() {}
-            )
+        val products = readProductPage(response).content
 
         assertTrue(products.isEmpty())
     }
@@ -382,5 +398,13 @@ class ProductControllerIT {
         assertEquals(404, error.status)
         assertEquals("Product not found", error.message)
     }
+
+    private fun readProductPage(
+        response: MvcResult
+    ): PageResponse<ProductResponse> =
+        objectMapper.readValue(
+            response.response.contentAsString,
+            object : TypeReference<PageResponse<ProductResponse>>() {}
+        )
 
 }
