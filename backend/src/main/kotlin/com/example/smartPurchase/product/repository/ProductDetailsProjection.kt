@@ -3,7 +3,7 @@ package com.example.smartPurchase.product.repository
 import java.math.BigDecimal
 import java.time.LocalDate
 
-interface ProductSearchProjection {
+interface ProductDetailsProjection {
 
     fun getId(): Long
 
@@ -13,5 +13,7 @@ interface ProductSearchProjection {
 
     fun getPrice(): BigDecimal
 
-    fun getAvailableSizes(): String
+    fun getSize(): String
+
+    fun getQuantity(): Int
 }

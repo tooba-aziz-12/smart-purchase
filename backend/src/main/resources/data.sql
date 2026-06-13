@@ -1,17 +1,17 @@
-INSERT INTO products (id, name, category, price, delivery_date)
+INSERT INTO products (id, name, category, price)
 VALUES
-    (1, 'Blue Lawn Suit', 'Lawn', 7500, '2026-06-18'),
-    (2, 'Green Lawn Suit', 'Lawn', 6900, '2026-06-17'),
-    (3, 'Ivory Embroidered Lawn', 'Lawn', 8200, '2026-06-19'),
-    (4, 'Black Festive Kurta', 'Festive', 9500, '2026-06-20'),
-    (5, 'Pink Printed Lawn', 'Lawn', 7200, '2026-06-18'),
-    (6, 'Maroon Formal Suit', 'Formal', 12500, '2026-06-22'),
-    (7, 'Mustard Summer Lawn', 'Lawn', 6500, '2026-06-17'),
-    (8, 'Navy Blue Kurta', 'Casual', 5800, '2026-06-16'),
-    (9, 'White Eid Collection', 'Festive', 11000, '2026-06-21'),
-    (10, 'Olive Everyday Wear', 'Casual', 5400, '2026-06-16'),
-    (11, 'Lavender Embroidered Lawn', 'Lawn', 8900, '2026-06-20'),
-    (12, 'Beige Luxury Pret', 'Formal', 14500, '2026-06-23');
+    (1, 'Blue Lawn Suit', 'Lawn', 7500),
+    (2, 'Green Lawn Suit', 'Lawn', 6900),
+    (3, 'Ivory Embroidered Lawn', 'Lawn', 8200),
+    (4, 'Black Festive Kurta', 'Festive', 9500),
+    (5, 'Pink Printed Lawn', 'Lawn', 7200),
+    (6, 'Maroon Formal Suit', 'Formal', 12500),
+    (7, 'Mustard Summer Lawn', 'Lawn', 6500),
+    (8, 'Navy Blue Kurta', 'Casual', 5800),
+    (9, 'White Eid Collection', 'Festive', 11000),
+    (10, 'Olive Everyday Wear', 'Casual', 5400),
+    (11, 'Lavender Embroidered Lawn', 'Lawn', 8900),
+    (12, 'Beige Luxury Pret', 'Formal', 14500);
 
 INSERT INTO warehouses (id, city)
 VALUES

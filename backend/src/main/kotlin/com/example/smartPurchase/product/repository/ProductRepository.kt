@@ -15,7 +15,6 @@ interface ProductRepository : JpaRepository<Product, Long> {
             p.name AS name,
             p.category AS category,
             p.price AS price,
-            p.delivery_date AS deliveryDate,
             STRING_AGG(DISTINCT wi.size, ',') AS availableSizes
         FROM products p
         JOIN warehouse_inventory wi
@@ -33,8 +32,7 @@ interface ProductRepository : JpaRepository<Product, Long> {
             p.id,
             p.name,
             p.category,
-            p.price,
-            p.delivery_date
+            p.price
     """,
         nativeQuery = true
     )
@@ -45,4 +43,24 @@ interface ProductRepository : JpaRepository<Product, Long> {
         @Param("size") size: String?,
         @Param("city") city: String?
     ): List<ProductSearchProjection>
+
+    @Query(
+        value = """
+            SELECT
+                p.id AS id,
+                p.name AS name,
+                p.category AS category,
+                p.price AS price,
+                wi.size AS size,
+                wi.quantity AS quantity
+            FROM products p
+            LEFT JOIN warehouse_inventory wi
+                ON p.id = wi.product_id
+            WHERE p.id = :productId
+        """,
+        nativeQuery = true
+    )
+    fun findProductDetails(
+        @Param("productId") productId: Long
+    ): List<ProductDetailsProjection>
 }

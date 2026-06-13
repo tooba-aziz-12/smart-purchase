@@ -1,8 +1,10 @@
 package com.example.smartPurchase.product.controller
 
+import com.example.smartPurchase.product.dto.ProductDetailsResponse
 import com.example.smartPurchase.product.dto.ProductResponse
 import com.example.smartPurchase.product.service.ProductService
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -29,4 +31,10 @@ class ProductController(
             size,
             city
         )
+
+    @GetMapping("/{id}")
+    fun getProductDetails(
+        @PathVariable id: Long
+    ): ProductDetailsResponse =
+        productService.getProductDetails(id)
 }
