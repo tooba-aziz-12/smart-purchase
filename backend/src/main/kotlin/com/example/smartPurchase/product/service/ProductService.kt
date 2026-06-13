@@ -112,7 +112,18 @@ class ProductService(
                 0,
                 SIMILAR_PRODUCT_LIMIT
             )
-        )
+        ).ifEmpty {
+            // Fall back to a wider price band only when the tight band returns nothing,
+            // so categories with sparse price points still surface alternatives.
+            productRepository.findSimilarProducts(
+                productId,
+                SIMILAR_PRODUCT_FALLBACK_PRICE_RANGE,
+                PageRequest.of(
+                    0,
+                    SIMILAR_PRODUCT_LIMIT
+                )
+            )
+        }
 
         val productIds = similarProducts.map { it.id }
 
@@ -331,6 +342,7 @@ class ProductService(
 
     companion object {
         private val SIMILAR_PRODUCT_PRICE_RANGE = BigDecimal("1000")
+        private val SIMILAR_PRODUCT_FALLBACK_PRICE_RANGE = BigDecimal("3000")
         private const val SIMILAR_PRODUCT_LIMIT = 4
         private const val MAX_PAGE_SIZE = 50
     }
