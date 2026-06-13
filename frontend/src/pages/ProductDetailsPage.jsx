@@ -1,17 +1,22 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import {
     ApiError,
     fetchProductDetails,
     fetchSimilarProducts
 } from "../api/productApi.js";
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+import {
+    renderDeliveryEstimate
+} from "../utils/deliveryEstimate.js";
 
-function formatDeliveryDate(isoDate) {
-    const [year, month, day] = isoDate.split("-");
-    return `${parseInt(day)} ${MONTHS[parseInt(month) - 1]} ${year}`;
+function buildProductPath(productId, city) {
+    if (!city) {
+        return `/products/${productId}`;
+    }
+
+    const params = new URLSearchParams({ city });
+    return `/products/${productId}?${params.toString()}`;
 }
 
 function getProductDetailsErrorMessage(error) {
@@ -30,6 +35,8 @@ function getProductDetailsErrorMessage(error) {
 function ProductDetailsPage() {
 
     const { id } = useParams();
+    const [searchParams] = useSearchParams();
+    const city = searchParams.get("city") ?? "";
 
     const [product, setProduct] = useState(null);
     const [selectedSize, setSelectedSize] = useState("");
@@ -41,8 +48,8 @@ function ProductDetailsPage() {
     useEffect(() => {
 
         Promise.all([
-            fetchProductDetails(id),
-            fetchSimilarProducts(id).catch(() => [])
+            fetchProductDetails(id, { city: city || undefined }),
+            fetchSimilarProducts(id, { city: city || undefined }).catch(() => [])
         ])
             .then(([product, similar]) => {
                 setProduct(product);
@@ -59,7 +66,7 @@ function ProductDetailsPage() {
                 );
             });
 
-    }, [id]);
+    }, [id, city]);
 
     const addToCart = () => {
 
@@ -124,6 +131,20 @@ function ProductDetailsPage() {
     if (!product) {
         return <div>Loading...</div>;
     }
+
+    const selectedSizeOption = product.sizes.find(
+        sizeOption => sizeOption.size === selectedSize
+    );
+
+    const displayedDelivery = {
+        estimatedDelivery:
+            selectedSizeOption?.estimatedDelivery ?? product.estimatedDelivery,
+        estimatedDeliveryRange:
+            selectedSizeOption?.estimatedDeliveryRange ??
+            product.estimatedDeliveryRange
+    };
+
+    const hasExactDelivery = Boolean(displayedDelivery.estimatedDelivery);
 
     return (
         <div
@@ -257,11 +278,22 @@ function ProductDetailsPage() {
                                 <div
                                     style={{
                                         fontWeight: "600",
-                                        color: "#111827"
+                                        color: hasExactDelivery ? "#111827" : "#6b7280"
                                     }}
                                 >
-                                    {formatDeliveryDate(product.estimatedDelivery)}
+                                    {renderDeliveryEstimate(displayedDelivery)}
                                 </div>
+                                {city && selectedSize && hasExactDelivery && (
+                                    <div
+                                        style={{
+                                            color: "#6b7280",
+                                            fontSize: "13px",
+                                            marginTop: "8px"
+                                        }}
+                                    >
+                                        Delivery estimate for size {selectedSize} to {city}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -424,7 +456,7 @@ function ProductDetailsPage() {
 
                                     <Link
                                         key={similarProduct.id}
-                                        to={`/products/${similarProduct.id}`}
+                                        to={buildProductPath(similarProduct.id, city)}
                                         style={{
                                             display: "block",
                                             textDecoration: "none",
@@ -489,7 +521,10 @@ function ProductDetailsPage() {
                                                 fontSize: "14px"
                                             }}
                                         >
-                                            Delivery by {formatDeliveryDate(similarProduct.estimatedDelivery)}
+                                        {renderDeliveryEstimate({
+                                            estimatedDelivery: similarProduct.estimatedDelivery,
+                                            estimatedDeliveryRange: similarProduct.estimatedDeliveryRange
+                                        })}
                                         </div>
                                     </Link>
 

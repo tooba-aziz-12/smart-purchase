@@ -39,13 +39,21 @@ class ProductController(
 
     @GetMapping("/{id}")
     fun getProductDetails(
-        @PathVariable id: Long
+        @PathVariable id: Long,
+        @RequestParam(required = false) city: String?
     ): ProductDetailsResponse =
-        productService.getProductDetails(id)
+        productService.getProductDetails(
+            id,
+            city
+        )
 
     @GetMapping("/{id}/similar")
     fun getSimilarProducts(
-        @PathVariable id: Long
+        @PathVariable id: Long,
+        @RequestParam(required = false) city: String?
     ): List<ProductResponse> =
-        productService.getSimilarProducts(id)
+        productService.getSimilarProducts(
+            id,
+            city
+        )
 }

@@ -22,11 +22,9 @@ interface ProductRepository : JpaRepository<Product, Long> {
         AND EXISTS (
             SELECT 1
             FROM WarehouseInventory wi
-            JOIN wi.warehouse w
             WHERE wi.product = p
             AND wi.quantity > 0
             AND (:size IS NULL OR wi.size = :size)
-            AND (:city IS NULL OR w.city = :city)
         )
         """
     )
@@ -35,7 +33,6 @@ interface ProductRepository : JpaRepository<Product, Long> {
         @Param("minPrice") minPrice: BigDecimal?,
         @Param("maxPrice") maxPrice: BigDecimal?,
         @Param("size") size: ProductSize?,
-        @Param("city") city: String?,
         pageable: Pageable
     ): Page<Product>
 
@@ -53,6 +50,22 @@ interface ProductRepository : JpaRepository<Product, Long> {
     fun findAvailableSizesByProductIds(
         @Param("productIds") productIds: Collection<Long>
     ): List<ProductSizeProjection>
+
+    @Query(
+        """
+            SELECT DISTINCT
+                wi.product.id AS productId,
+                w.city AS warehouseCity
+            FROM WarehouseInventory wi
+            JOIN wi.warehouse w
+            WHERE wi.product.id IN (:productIds)
+            AND wi.quantity > 0
+            ORDER BY wi.product.id, w.city
+        """
+    )
+    fun findWarehouseCitiesByProductIds(
+        @Param("productIds") productIds: Collection<Long>
+    ): List<ProductWarehouseCityProjection>
 
     @Query(
         """
@@ -86,10 +99,12 @@ interface ProductRepository : JpaRepository<Product, Long> {
                 p.price AS price,
                 p.imageUrl AS imageUrl,
                 wi.size AS size,
-                wi.quantity AS quantity
+                wi.quantity AS quantity,
+                w.city AS warehouseCity
             FROM Product p
             LEFT JOIN WarehouseInventory wi
                 ON wi.product = p
+            LEFT JOIN wi.warehouse w
             WHERE p.id = :productId
         """
     )

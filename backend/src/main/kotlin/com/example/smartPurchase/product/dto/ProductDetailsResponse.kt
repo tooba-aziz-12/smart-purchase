@@ -9,7 +9,8 @@ data class ProductDetailsResponse(
     val category: String,
     val price: BigDecimal,
     val imageUrl: String,
-    val estimatedDelivery: LocalDate,
+    val estimatedDelivery: LocalDate?,
+    val estimatedDeliveryRange: DeliveryRangeResponse? = null,
     val sizes: List<SizeOptionResponse>,
     val priceBreakdown: PriceBreakdownResponse
 )

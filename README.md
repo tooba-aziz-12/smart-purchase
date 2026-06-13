@@ -23,13 +23,13 @@ Rather than building a complete marketplace, I focused on solving the decision-m
 ### Implemented
 
 * Product listing page
-* Product filtering
+* Product catalogue filtering
 
     * Category
     * Size
-    * City
     * Minimum price
     * Maximum price
+* Deliver to selection (customer delivery city — affects delivery estimates, not catalogue results)
 * Paginated product listing API and UI controls
 * Product details page
 * Size availability visibility
@@ -64,12 +64,86 @@ The customer lands on the product listing page.
 
 All available products are displayed by default.
 
-The customer can narrow results using:
+The customer can narrow the catalogue using:
 
 * Category
 * Size
-* City
-* Price range
+* Minimum price
+* Maximum price
+
+They can also set **Deliver to**, which is described below.
+
+---
+
+### Deliver To: Customer Context, Not a Catalogue Filter
+
+**Deliver to** is the customer's delivery city. It is intentionally **not** a catalogue filter.
+
+| Input | What it changes | What it does *not* change |
+| --- | --- | --- |
+| Category, size, price | Which products appear in the catalogue | Delivery estimates |
+| **Deliver to** | Delivery estimates on listing cards, product details, and similar products | Which products or sizes appear |
+
+#### Why have this selection if the product list stays the same?
+
+Because the assessment is about purchase **confidence**, not just discovery.
+
+Without a delivery city, every product would show the same generic delivery date. That would not honestly answer:
+
+> *Can I trust the delivery promise?*
+
+With **Deliver to** selected, the API still returns the same in-stock products, but the response includes **personalized delivery estimates** based on where each size would ship from.
+
+Example for Product 1 with **Deliver to = Lahore**:
+
+* Size **L** (stock in Lahore) → 5-day delivery
+* Size **M** (stock in Karachi) → 8-day delivery
+
+Both sizes remain available. The customer is not blocked from buying cross-city stock — they just see a longer delivery promise.
+
+This matches a national marketplace model: **the catalogue is nationwide; delivery time depends on fulfillment location.**
+
+It is similar to entering a postcode on a large e-commerce site. The product list often stays the same, but delivery dates change.
+
+#### Why not filter products by warehouse city?
+
+An earlier approach was to only show products stocked in the selected city. That breaks down quickly:
+
+* A customer in Lahore can still receive a product from Karachi
+* Hiding Karachi stock makes valid products look unavailable
+* Size availability on the product page becomes inconsistent with customer expectations
+
+So warehouse city is used for **delivery calculation**, not catalogue filtering.
+
+#### What exactly changes in the API?
+
+The optional `city` query parameter represents the customer's delivery city.
+
+```http
+GET /products?city=Lahore
+GET /products/1?city=Lahore
+GET /products/1/similar?city=Lahore
+```
+
+When `city` is **not** provided, the API returns `estimatedDeliveryRange` instead of a single date:
+
+* `from`: earliest possible delivery (5 days, same-city fulfillment)
+* `to`: latest possible delivery (8 days, cross-city fulfillment)
+
+This gives an honest national estimate before the customer selects a delivery city. The UI shows this as a date range.
+
+When `city` is provided:
+
+* Product and size **availability stay the same** (any warehouse with stock)
+* `estimatedDelivery` changes based on fulfillment location
+* Same-city fulfillment: 5 days
+* Cross-city fulfillment: 8 days (+3 days)
+
+On the listing page, each card shows the **earliest** possible delivery for that product in the selected city. On the product details page, the estimate updates when the customer selects a size, because different sizes may ship from different warehouses.
+
+#### UI note
+
+In this prototype, **Deliver to** sits near the catalogue filters for layout simplicity. In production, I would present it separately — for example, "Your delivery city" — so customers do not expect the product list to shrink when they change it.
 
 ---
 
@@ -90,11 +164,13 @@ Only products with available inventory are returned from the API.
 
 Availability is derived from warehouse inventory rather than manually maintained flags.
 
+Products are treated as **nationally available** when any warehouse has stock. The **Deliver to** selection does not remove products from the catalogue. Instead, it helps the customer understand **when** the product can reach them.
+
 ### Is my preferred size in stock?
 
 The product details page displays all supported sizes.
 
-Available sizes are selectable.
+Available sizes are selectable from **any warehouse with stock**, not just the selected delivery city.
 
 Unavailable sizes are disabled.
 
@@ -112,17 +188,14 @@ This removes uncertainty around final pricing.
 
 ### Can I trust the delivery promise?
 
-The customer is shown an estimated delivery date.
+The customer is shown an estimated delivery date based on their selected delivery city.
 
-The current implementation uses a delivery estimation service.
+* Same-city fulfillment: 5 days
+* Cross-city fulfillment: 8 days
 
-In a production environment this could be calculated using:
+On the product details page, the estimate updates when the customer selects a size, because different sizes may ship from different warehouses.
 
-* Customer location
-* Warehouse location
-* Inventory availability
-* Courier performance
-* Historical delivery metrics
+In a production environment this could also use courier performance, holidays, and historical delivery metrics.
 
 ### Are there similar alternatives if this product is not suitable?
 
@@ -246,7 +319,11 @@ Response:
       "category": "Lawn",
       "price": 7500,
       "imageUrl": "/products/Blue Lawn Suit.png",
-      "estimatedDelivery": "2026-06-18",
+      "estimatedDelivery": null,
+      "estimatedDeliveryRange": {
+        "from": "2026-06-18",
+        "to": "2026-06-21"
+      },
       "availableSizes": ["M", "L"]
     }
   ],
@@ -375,21 +452,28 @@ This avoids paginating over duplicated inventory rows and avoids vendor-specific
 
 Products do not store delivery dates.
 
-Instead, delivery estimates are calculated through a dedicated service.
+Instead, delivery estimates are calculated through a dedicated service using the customer's delivery city and the warehouse city that would fulfill the order.
 
 Current implementation:
 
 ```text
-Current Date + 5 Days
+Same-city fulfillment: Current Date + 5 Days
+Cross-city fulfillment: Current Date + 8 Days
 ```
 
-Future implementations could use:
+The optional `city` query parameter is the customer's **deliver-to** city. It does not filter catalogue results.
 
-* Customer location
-* Nearest warehouse
-* Inventory allocation
-* Courier performance
-* Public holidays
+When `city` is not provided, the API returns `estimatedDeliveryRange` (5–8 days) instead of a single `estimatedDelivery`.
+
+When `city` is provided:
+
+* Listing cards show the earliest possible delivery for each product
+* Product details return a per-size `estimatedDelivery`
+* Similar products use the same delivery context
+
+When choosing a warehouse for a size, the service prefers local stock in the deliver-to city when available. Otherwise it uses cross-city stock and adds the extra delivery days.
+
+See **Deliver To: Customer Context, Not a Catalogue Filter** above for the product rationale.
 
 ---
 
@@ -523,7 +607,7 @@ Coverage:
 
 * Retrieve all products
 * Filter by category
-* Filter by city
+* Filter by deliver-to city (delivery estimate only)
 * Filter by size
 * Filter by minimum and maximum price
 * Retrieve product details
@@ -604,7 +688,9 @@ The similar products feature uses a ±1000 PKR price range within the same categ
 
 ### Delivery
 
-* Warehouse selection
+* Separate deliver-to UI from catalogue filters
+* Delivery fee or SLA changes by distance
+* Delivery range instead of a single date on listing cards
 * Courier integration
 * Delivery confidence scoring
 * SLA monitoring

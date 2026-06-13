@@ -48,7 +48,11 @@ describe("ProductListPage", () => {
                     category: "Lawn",
                     price: 7500,
                     imageUrl: "/products/Blue Lawn Suit.png",
-                    estimatedDelivery: "2026-06-18",
+                    estimatedDelivery: null,
+                    estimatedDeliveryRange: {
+                        from: "2026-06-18",
+                        to: "2026-06-21"
+                    },
                     availableSizes: ["M", "L"]
                 }
             ])
@@ -65,13 +69,8 @@ describe("ProductListPage", () => {
         ).toBeTruthy();
 
         expect(
-            screen.getByRole(
-                "img",
-                {
-                    name: "Sky Blue Embroidered Lawn Suit"
-                }
-            ).getAttribute("src")
-        ).toBe("/products/Blue Lawn Suit.png");
+            screen.getByText("Delivery 18 Jun 2026 – 21 Jun 2026")
+        ).toBeTruthy();
 
         const user = userEvent.setup();
         const filters = screen.getAllByRole("combobox");
@@ -107,6 +106,59 @@ describe("ProductListPage", () => {
                 pageSize: 6
             });
         });
+
+        expect(
+            screen.getByRole(
+                "link",
+                {
+                    name: /Sky Blue Embroidered Lawn Suit/i
+                }
+            ).getAttribute("href")
+        ).toBe("/products/1?city=Lahore");
+    });
+
+    it("shows delivery estimate after deliver to city is selected", async () => {
+
+        fetchProducts.mockResolvedValue(
+            productPage([
+                {
+                    id: 1,
+                    name: "Sky Blue Embroidered Lawn Suit",
+                    category: "Lawn",
+                    price: 7500,
+                    imageUrl: "/products/Blue Lawn Suit.png",
+                    estimatedDelivery: "2026-06-18",
+                    availableSizes: ["M", "L"]
+                }
+            ])
+        );
+
+        render(
+            <MemoryRouter>
+                <ProductListPage />
+            </MemoryRouter>
+        );
+
+        expect(
+            await screen.findByText("Sky Blue Embroidered Lawn Suit")
+        ).toBeTruthy();
+
+        const user = userEvent.setup();
+        const filters = screen.getAllByRole("combobox");
+
+        await user.selectOptions(filters[2], "Lahore");
+        await user.click(
+            screen.getByRole(
+                "button",
+                {
+                    name: "Apply Filters"
+                }
+            )
+        );
+
+        expect(
+            await screen.findByText("Delivery by 18 Jun 2026")
+        ).toBeTruthy();
     });
 
     it("loads the next page", async () => {
@@ -120,7 +172,7 @@ describe("ProductListPage", () => {
                         category: "Lawn",
                         price: 7500,
                         imageUrl: "/products/Blue Lawn Suit.png",
-                        estimatedDelivery: "2026-06-18",
+                        estimatedDelivery: null,
                         availableSizes: ["M", "L"]
                     }
                 ],
@@ -142,7 +194,7 @@ describe("ProductListPage", () => {
                         category: "Formal",
                         price: 9500,
                         imageUrl: "/products/Maroon Formal Suit.png",
-                        estimatedDelivery: "2026-06-18",
+                        estimatedDelivery: null,
                         availableSizes: ["S"]
                     }
                 ],

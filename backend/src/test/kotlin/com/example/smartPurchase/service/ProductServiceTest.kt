@@ -1,20 +1,22 @@
 package com.example.smartPurchase.service
 
+import com.example.smartPurchase.product.dto.DeliveryRangeResponse
 import com.example.smartPurchase.product.config.PricingProperties
 import com.example.smartPurchase.product.entity.Product
 import com.example.smartPurchase.product.entity.ProductSize
 import com.example.smartPurchase.product.exception.InvalidProductFilterException
 import com.example.smartPurchase.product.exception.ProductNotFoundException
-import com.example.smartPurchase.product.repository.ProductSizeProjection
 import com.example.smartPurchase.product.repository.ProductDetailsProjection
 import com.example.smartPurchase.product.repository.ProductRepository
+import com.example.smartPurchase.product.repository.ProductSizeProjection
+import com.example.smartPurchase.product.repository.ProductWarehouseCityProjection
 import com.example.smartPurchase.product.service.ProductService
 import com.example.smartPurchase.util.DeliveryEstimator
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
@@ -42,8 +44,17 @@ class ProductServiceTest {
             deliveryEstimator,
             PricingProperties()
         )
-    }
 
+        every {
+            deliveryEstimator.estimateDeliveryRange()
+        } returns DeliveryRangeResponse(
+            from = LocalDate.now().plusDays(DeliveryEstimator.BASE_DELIVERY_DAYS),
+            to = LocalDate.now().plusDays(
+                DeliveryEstimator.BASE_DELIVERY_DAYS +
+                    DeliveryEstimator.CROSS_CITY_EXTRA_DAYS
+            )
+        )
+    }
 
     @Test
     fun `should return products`() {
@@ -70,9 +81,22 @@ class ProductServiceTest {
             override fun getSize() = ProductSize.L
         }
 
+        val karachiWarehouse = object : ProductWarehouseCityProjection {
+
+            override fun getProductId() = 1L
+
+            override fun getWarehouseCity() = "Karachi"
+        }
+
+        val lahoreWarehouse = object : ProductWarehouseCityProjection {
+
+            override fun getProductId() = 1L
+
+            override fun getWarehouseCity() = "Lahore"
+        }
+
         every {
             productRepository.findProducts(
-                null,
                 null,
                 null,
                 null,
@@ -93,8 +117,11 @@ class ProductServiceTest {
         )
 
         every {
-            deliveryEstimator.estimateDelivery()
-        } returns LocalDate.now().plusDays(3)
+            productRepository.findWarehouseCitiesByProductIds(listOf(1L))
+        } returns listOf(
+            karachiWarehouse,
+            lahoreWarehouse
+        )
 
         val result = productService.getProducts(
             null,
@@ -110,46 +137,54 @@ class ProductServiceTest {
         assertEquals("Sky Blue Embroidered Lawn Suit", result.content[0].name)
         assertEquals("/products/Blue Lawn Suit.png", result.content[0].imageUrl)
         assertEquals(listOf("M", "L"), result.content[0].availableSizes)
+        assertNull(result.content[0].estimatedDelivery)
+        assertNotNull(result.content[0].estimatedDeliveryRange)
+        assertEquals(
+            LocalDate.now().plusDays(DeliveryEstimator.BASE_DELIVERY_DAYS),
+            result.content[0].estimatedDeliveryRange?.from
+        )
+        assertEquals(
+            LocalDate.now().plusDays(
+                DeliveryEstimator.BASE_DELIVERY_DAYS +
+                    DeliveryEstimator.CROSS_CITY_EXTRA_DAYS
+            ),
+            result.content[0].estimatedDeliveryRange?.to
+        )
     }
 
     @Test
     fun `should mark unavailable sizes correctly`() {
 
-        val medium = object : ProductDetailsProjection {
+        val medium = inventoryRow(ProductSize.M, 5, "Karachi")
+        val large = inventoryRow(ProductSize.L, 2, "Lahore")
 
-            override fun getId() = 1L
+        every {
+            productRepository.findProductDetails(1)
+        } returns listOf(
+            medium,
+            large
+        )
 
-            override fun getName() = "Sky Blue Embroidered Lawn Suit"
+        val result =
+            productService.getProductDetails(
+                1,
+                null
+            )
 
-            override fun getCategory() = "Lawn"
+        assertFalse(result.sizes.first { it.size == "S" }.available)
+        assertTrue(result.sizes.first { it.size == "M" }.available)
+        assertTrue(result.sizes.first { it.size == "L" }.available)
+        assertNull(result.estimatedDelivery)
+        assertNull(result.sizes.first { it.size == "M" }.estimatedDelivery)
+        assertNotNull(result.estimatedDeliveryRange)
+        assertNotNull(result.sizes.first { it.size == "M" }.estimatedDeliveryRange)
+    }
 
-            override fun getPrice() =
-                BigDecimal("7500")
+    @Test
+    fun `should keep all sizes available regardless of deliver to city`() {
 
-            override fun getImageUrl() = "/products/Blue Lawn Suit.png"
-
-            override fun getSize() = ProductSize.M
-
-            override fun getQuantity() = 5
-        }
-
-        val large = object : ProductDetailsProjection {
-
-            override fun getId() = 1L
-
-            override fun getName() = "Sky Blue Embroidered Lawn Suit"
-
-            override fun getCategory() = "Lawn"
-
-            override fun getPrice() =
-                BigDecimal("7500")
-
-            override fun getImageUrl() = "/products/Blue Lawn Suit.png"
-
-            override fun getSize() = ProductSize.L
-
-            override fun getQuantity() = 2
-        }
+        val medium = inventoryRow(ProductSize.M, 5, "Karachi")
+        val large = inventoryRow(ProductSize.L, 2, "Lahore")
 
         every {
             productRepository.findProductDetails(1)
@@ -159,62 +194,49 @@ class ProductServiceTest {
         )
 
         every {
-            deliveryEstimator.estimateDelivery()
-        } returns LocalDate.now().plusDays(3)
+            deliveryEstimator.estimateDelivery("Lahore", "Lahore")
+        } returns LocalDate.now().plusDays(5)
 
-        val result =
-            productService.getProductDetails(1)
+        every {
+            deliveryEstimator.estimateDelivery("Lahore", "Karachi")
+        } returns LocalDate.now().plusDays(8)
 
-        assertFalse(
-            result.sizes.first {
-                it.size == "S"
-            }.available
+        val lahoreResult =
+            productService.getProductDetails(
+                1,
+                "Lahore"
+            )
+
+        assertTrue(lahoreResult.sizes.first { it.size == "M" }.available)
+        assertTrue(lahoreResult.sizes.first { it.size == "L" }.available)
+        assertEquals(
+            LocalDate.now().plusDays(5),
+            lahoreResult.sizes.first { it.size == "L" }.estimatedDelivery
         )
-
-        assertTrue(
-            result.sizes.first {
-                it.size == "M"
-            }.available
+        assertEquals(
+            LocalDate.now().plusDays(8),
+            lahoreResult.sizes.first { it.size == "M" }.estimatedDelivery
         )
-
-        assertTrue(
-            result.sizes.first {
-                it.size == "L"
-            }.available
+        assertEquals(
+            LocalDate.now().plusDays(5),
+            lahoreResult.estimatedDelivery
         )
     }
 
     @Test
     fun `should calculate price breakdown correctly`() {
 
-        val medium = object : ProductDetailsProjection {
-
-            override fun getId() = 1L
-
-            override fun getName() = "Sky Blue Embroidered Lawn Suit"
-
-            override fun getCategory() = "Lawn"
-
-            override fun getPrice() =
-                BigDecimal("7500")
-
-            override fun getImageUrl() = "/products/Blue Lawn Suit.png"
-
-            override fun getSize() = ProductSize.M
-
-            override fun getQuantity() = 5
-        }
+        val medium = inventoryRow(ProductSize.M, 5, "Karachi")
 
         every {
             productRepository.findProductDetails(1)
         } returns listOf(medium)
 
-        every {
-            deliveryEstimator.estimateDelivery()
-        } returns LocalDate.now().plusDays(3)
-
         val result =
-            productService.getProductDetails(1)
+            productService.getProductDetails(
+                1,
+                null
+            )
 
         assertEquals(
             BigDecimal("200"),
@@ -245,30 +267,15 @@ class ProductServiceTest {
         } returns emptyList()
 
         assertThrows<ProductNotFoundException> {
-            productService.getProductDetails(999)
+            productService.getProductDetails(
+                999,
+                null
+            )
         }
     }
 
     @Test
     fun `should return similar products`() {
-
-        val detailsProjection = object : ProductDetailsProjection {
-
-            override fun getId() = 1L
-
-            override fun getName() = "Sky Blue Embroidered Lawn Suit"
-
-            override fun getCategory() = "Lawn"
-
-            override fun getPrice() =
-                BigDecimal("7500")
-
-            override fun getImageUrl() = "/products/Blue Lawn Suit.png"
-
-            override fun getSize() = ProductSize.M
-
-            override fun getQuantity() = 3
-        }
 
         val similarProduct = Product(
             id = 2L,
@@ -283,6 +290,13 @@ class ProductServiceTest {
             override fun getProductId() = 2L
 
             override fun getSize() = ProductSize.M
+        }
+
+        val karachiWarehouse = object : ProductWarehouseCityProjection {
+
+            override fun getProductId() = 2L
+
+            override fun getWarehouseCity() = "Karachi"
         }
 
         every {
@@ -305,13 +319,18 @@ class ProductServiceTest {
         } returns listOf(mediumSize)
 
         every {
-            deliveryEstimator.estimateDelivery()
-        } returns LocalDate.now().plusDays(3)
+            productRepository.findWarehouseCitiesByProductIds(listOf(2L))
+        } returns listOf(karachiWarehouse)
 
         val result =
-            productService.getSimilarProducts(1)
+            productService.getSimilarProducts(
+                1,
+                null
+            )
 
         assertEquals(1, result.size)
+        assertNull(result[0].estimatedDelivery)
+        assertNotNull(result[0].estimatedDeliveryRange)
         assertEquals(2L, result[0].id)
         assertEquals("Mint Green Embroidered Lawn Suit", result[0].name)
         assertEquals("/products/Green Lawn suit.png", result[0].imageUrl)
@@ -375,7 +394,34 @@ class ProductServiceTest {
         } returns false
 
         assertThrows<ProductNotFoundException> {
-            productService.getSimilarProducts(999)
+            productService.getSimilarProducts(
+                999,
+                null
+            )
         }
     }
+
+    private fun inventoryRow(
+        size: ProductSize,
+        quantity: Int,
+        warehouseCity: String
+    ): ProductDetailsProjection =
+        object : ProductDetailsProjection {
+
+            override fun getId() = 1L
+
+            override fun getName() = "Sky Blue Embroidered Lawn Suit"
+
+            override fun getCategory() = "Lawn"
+
+            override fun getPrice() = BigDecimal("7500")
+
+            override fun getImageUrl() = "/products/Blue Lawn Suit.png"
+
+            override fun getSize() = size
+
+            override fun getQuantity() = quantity
+
+            override fun getWarehouseCity() = warehouseCity
+        }
 }

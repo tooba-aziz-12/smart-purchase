@@ -240,6 +240,112 @@ describe("ProductDetailsPage", () => {
         ).toBeNull();
     });
 
+    it("updates delivery estimate when deliver to city and size are selected", async () => {
+
+        fetchProductDetails.mockResolvedValue({
+            id: 1,
+            name: "Sky Blue Embroidered Lawn Suit",
+            category: "Lawn",
+            price: 7500,
+            imageUrl: "/products/Blue Lawn Suit.png",
+            estimatedDelivery: "2026-06-18",
+            sizes: [
+                {
+                    size: "S",
+                    available: false,
+                    estimatedDelivery: null
+                },
+                {
+                    size: "M",
+                    available: true,
+                    estimatedDelivery: "2026-06-21"
+                },
+                {
+                    size: "L",
+                    available: true,
+                    estimatedDelivery: "2026-06-18"
+                }
+            ],
+            priceBreakdown: {
+                productPrice: 7500,
+                platformFee: 200,
+                deliveryFee: 250,
+                vat: 1125,
+                total: 9075
+            }
+        });
+
+        fetchSimilarProducts.mockResolvedValue([]);
+
+        render(
+            <MemoryRouter initialEntries={["/products/1?city=Lahore"]}>
+                <Routes>
+                    <Route
+                        path="/products/:id"
+                        element={<ProductDetailsPage />}
+                    />
+                </Routes>
+            </MemoryRouter>
+        );
+
+        expect(
+            await screen.findByRole(
+                "heading",
+                {
+                    name: "Sky Blue Embroidered Lawn Suit"
+                }
+            )
+        ).toBeTruthy();
+
+        expect(fetchProductDetails).toHaveBeenCalledWith(
+            "1",
+            { city: "Lahore" }
+        );
+
+        expect(fetchSimilarProducts).toHaveBeenCalledWith(
+            "1",
+            { city: "Lahore" }
+        );
+
+        expect(
+            screen.getByRole(
+                "button",
+                {
+                    name: "M"
+                }
+            ).disabled
+        ).toBe(false);
+
+        expect(
+            screen.getByRole(
+                "button",
+                {
+                    name: "L"
+                }
+            ).disabled
+        ).toBe(false);
+
+        expect(
+            screen.getByText("Delivery by 18 Jun 2026")
+        ).toBeTruthy();
+
+        const user = userEvent.setup();
+
+        await user.click(
+            screen.getByRole(
+                "button",
+                {
+                    name: "M"
+                }
+            )
+        );
+
+        expect(screen.getByText("Delivery by 21 Jun 2026")).toBeTruthy();
+        expect(
+            screen.getByText("Delivery estimate for size M to Lahore")
+        ).toBeTruthy();
+    });
+
     it("shows an error when product details cannot be loaded", async () => {
 
         fetchProductDetails.mockRejectedValue(

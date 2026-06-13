@@ -18,4 +18,6 @@ interface ProductDetailsProjection {
     fun getSize(): ProductSize?
 
     fun getQuantity(): Int?
+
+    fun getWarehouseCity(): String?
 }

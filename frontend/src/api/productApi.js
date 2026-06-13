@@ -38,16 +38,34 @@ export async function fetchProducts(filters) {
     );
 }
 
-export async function fetchProductDetails(id) {
+export async function fetchProductDetails(id, options = {}) {
+
+    const params = new URLSearchParams();
+
+    if (options.city) {
+        params.append("city", options.city);
+    }
+
+    const query = params.toString();
+    const suffix = query ? `?${query}` : "";
 
     return requestJson(
-        `${BASE_URL}/products/${id}`
+        `${BASE_URL}/products/${id}${suffix}`
     );
 }
 
-export async function fetchSimilarProducts(id) {
+export async function fetchSimilarProducts(id, options = {}) {
+
+    const params = new URLSearchParams();
+
+    if (options.city) {
+        params.append("city", options.city);
+    }
+
+    const query = params.toString();
+    const suffix = query ? `?${query}` : "";
 
     return requestJson(
-        `${BASE_URL}/products/${id}/similar`
+        `${BASE_URL}/products/${id}/similar${suffix}`
     );
 }

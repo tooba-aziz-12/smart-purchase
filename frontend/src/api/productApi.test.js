@@ -53,12 +53,21 @@ describe("productApi", () => {
         );
     });
 
-    it("fetches similar products by id", async () => {
+    it("fetches product details scoped to city", async () => {
 
-        await fetchSimilarProducts(1);
+        await fetchProductDetails(1, { city: "Lahore" });
 
         expect(globalThis.fetch).toHaveBeenCalledWith(
-            "http://localhost:8095/products/1/similar"
+            "http://localhost:8095/products/1?city=Lahore"
+        );
+    });
+
+    it("fetches similar products scoped to city", async () => {
+
+        await fetchSimilarProducts(1, { city: "Lahore" });
+
+        expect(globalThis.fetch).toHaveBeenCalledWith(
+            "http://localhost:8095/products/1/similar?city=Lahore"
         );
     });
 

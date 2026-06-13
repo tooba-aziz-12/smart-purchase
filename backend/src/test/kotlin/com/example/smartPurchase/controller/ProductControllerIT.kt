@@ -4,8 +4,11 @@ import com.example.smartPurchase.common.dto.ErrorResponse
 import com.example.smartPurchase.common.dto.PageResponse
 import com.example.smartPurchase.product.dto.ProductDetailsResponse
 import com.example.smartPurchase.product.dto.ProductResponse
+import com.example.smartPurchase.util.DeliveryEstimator
 import junit.framework.TestCase.assertEquals
 import junit.framework.TestCase.assertFalse
+import junit.framework.TestCase.assertNotNull
+import junit.framework.TestCase.assertNull
 import junit.framework.TestCase.assertTrue
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -17,6 +20,7 @@ import org.springframework.test.web.servlet.MvcResult
 import tools.jackson.core.type.TypeReference
 import tools.jackson.databind.ObjectMapper
 import java.math.BigDecimal
+import java.time.LocalDate
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -92,7 +96,7 @@ class ProductControllerIT {
     }
 
     @Test
-    fun `should filter products by city`() {
+    fun `should not filter products by deliver to city`() {
 
         val response = mockMvc.get("/products") {
             param("city", "Lahore")
@@ -104,7 +108,101 @@ class ProductControllerIT {
 
         val products = readProductPage(response).content
 
-        assertTrue(products.isNotEmpty())
+        assertEquals(12, products.size)
+    }
+
+    @Test
+    fun `should return all available sizes regardless of deliver to city`() {
+
+        val response = mockMvc.get("/products") {
+            param("city", "Lahore")
+        }
+            .andExpect {
+                status { isOk() }
+            }
+            .andReturn()
+
+        val products = readProductPage(response).content
+
+        val productOne = products.first {
+            it.id == 1L
+        }
+
+        assertEquals(listOf("M", "L"), productOne.availableSizes)
+    }
+
+    @Test
+    fun `should estimate delivery using deliver to city`() {
+
+        val lahoreResponse = mockMvc.get("/products/1") {
+            param("city", "Lahore")
+        }
+            .andExpect {
+                status { isOk() }
+            }
+            .andReturn()
+
+        val lahoreProduct =
+            objectMapper.readValue(
+                lahoreResponse.response.contentAsString,
+                ProductDetailsResponse::class.java
+            )
+
+        assertTrue(
+            lahoreProduct.sizes.first {
+                it.size == "M"
+            }.available
+        )
+
+        assertTrue(
+            lahoreProduct.sizes.first {
+                it.size == "L"
+            }.available
+        )
+
+        assertEquals(
+            LocalDate.now().plusDays(DeliveryEstimator.BASE_DELIVERY_DAYS),
+            lahoreProduct.sizes.first {
+                it.size == "L"
+            }.estimatedDelivery
+        )
+
+        assertEquals(
+            LocalDate.now().plusDays(
+                DeliveryEstimator.BASE_DELIVERY_DAYS +
+                    DeliveryEstimator.CROSS_CITY_EXTRA_DAYS
+            ),
+            lahoreProduct.sizes.first {
+                it.size == "M"
+            }.estimatedDelivery
+        )
+
+        assertEquals(
+            LocalDate.now().plusDays(DeliveryEstimator.BASE_DELIVERY_DAYS),
+            lahoreProduct.estimatedDelivery
+        )
+
+        val karachiOnlyResponse = mockMvc.get("/products/6") {
+            param("city", "Lahore")
+        }
+            .andExpect {
+                status { isOk() }
+            }
+            .andReturn()
+
+        val karachiOnlyProduct =
+            objectMapper.readValue(
+                karachiOnlyResponse.response.contentAsString,
+                ProductDetailsResponse::class.java
+            )
+
+        assertEquals(
+            LocalDate.now().plusDays(
+                DeliveryEstimator.BASE_DELIVERY_DAYS +
+                    DeliveryEstimator.CROSS_CITY_EXTRA_DAYS
+            ),
+            karachiOnlyProduct.estimatedDelivery
+        )
     }
 
     @Test
@@ -292,7 +390,7 @@ class ProductControllerIT {
     }
 
     @Test
-    fun `should return empty results for unknown city`() {
+    fun `should still return products for unknown deliver to city`() {
 
         val response = mockMvc.get("/products") {
             param("city", "Multan")
@@ -304,7 +402,7 @@ class ProductControllerIT {
 
         val products = readProductPage(response).content
 
-        assertTrue(products.isEmpty())
+        assertEquals(12, products.size)
     }
 
     @Test
@@ -346,11 +444,56 @@ class ProductControllerIT {
             }.available
         )
 
+        assertNull(product.estimatedDelivery)
+        assertNotNull(product.estimatedDeliveryRange)
+        assertNull(
+            product.sizes.first {
+                it.size == "M"
+            }.estimatedDelivery
+        )
+        assertNotNull(
+            product.sizes.first {
+                it.size == "M"
+            }.estimatedDeliveryRange
+        )
+
         assertEquals(0, product.priceBreakdown.productPrice.compareTo(BigDecimal("7500")))
         assertEquals(0, product.priceBreakdown.platformFee.compareTo(BigDecimal("200")))
         assertEquals(0, product.priceBreakdown.deliveryFee.compareTo(BigDecimal("250")))
         assertEquals(0, product.priceBreakdown.vat.compareTo(BigDecimal("1125")))
         assertEquals(0, product.priceBreakdown.total.compareTo(BigDecimal("9075")))
+    }
+
+    @Test
+    fun `should return delivery range on listing without deliver to city`() {
+
+        val response = mockMvc.get("/products")
+            .andExpect {
+                status { isOk() }
+            }
+            .andReturn()
+
+        val products = readProductPage(response).content
+
+        assertTrue(
+            products.all {
+                it.estimatedDelivery == null &&
+                    it.estimatedDeliveryRange != null
+            }
+        )
+
+        assertEquals(
+            LocalDate.now().plusDays(DeliveryEstimator.BASE_DELIVERY_DAYS),
+            products.first().estimatedDeliveryRange?.from
+        )
+
+        assertEquals(
+            LocalDate.now().plusDays(
+                DeliveryEstimator.BASE_DELIVERY_DAYS +
+                    DeliveryEstimator.CROSS_CITY_EXTRA_DAYS
+            ),
+            products.first().estimatedDeliveryRange?.to
+        )
     }
 
     @Test

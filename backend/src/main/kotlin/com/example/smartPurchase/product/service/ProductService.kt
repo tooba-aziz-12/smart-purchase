@@ -10,12 +10,14 @@ import com.example.smartPurchase.product.entity.Product
 import com.example.smartPurchase.product.entity.ProductSize
 import com.example.smartPurchase.product.exception.InvalidProductFilterException
 import com.example.smartPurchase.product.exception.ProductNotFoundException
+import com.example.smartPurchase.product.repository.ProductDetailsProjection
 import com.example.smartPurchase.product.repository.ProductRepository
 import com.example.smartPurchase.util.DeliveryEstimator
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
+import java.time.LocalDate
 
 @Service
 class ProductService(
@@ -30,7 +32,7 @@ class ProductService(
         minPrice: BigDecimal?,
         maxPrice: BigDecimal?,
         size: String?,
-        city: String?,
+        deliverTo: String?,
         page: Int,
         pageSize: Int
     ): PageResponse<ProductResponse> {
@@ -49,7 +51,6 @@ class ProductService(
             minPrice,
             maxPrice,
             parsedSize,
-            city,
             PageRequest.of(
                 page,
                 pageSize,
@@ -69,11 +70,23 @@ class ProductService(
                 )
         }
 
+        val warehouseCities = if (productIds.isEmpty()) {
+            emptyMap()
+        } else {
+            productRepository.findWarehouseCitiesByProductIds(productIds)
+                .groupBy(
+                    { it.getProductId() },
+                    { it.getWarehouseCity() }
+                )
+        }
+
         return PageResponse(
             content = productPage.content.map { product ->
                 toProductResponse(
                     product,
-                    availableSizes[product.id].orEmpty()
+                    availableSizes[product.id].orEmpty(),
+                    deliverTo,
+                    warehouseCities[product.id].orEmpty()
                 )
             },
             page = productPage.number,
@@ -84,7 +97,10 @@ class ProductService(
         )
     }
 
-    fun getSimilarProducts(productId: Long): List<ProductResponse> {
+    fun getSimilarProducts(
+        productId: Long,
+        deliverTo: String?
+    ): List<ProductResponse> {
         if (!productRepository.existsById(productId)) {
             throw ProductNotFoundException("Product not found")
         }
@@ -110,27 +126,54 @@ class ProductService(
                 )
         }
 
+        val warehouseCities = if (productIds.isEmpty()) {
+            emptyMap()
+        } else {
+            productRepository.findWarehouseCitiesByProductIds(productIds)
+                .groupBy(
+                    { it.getProductId() },
+                    { it.getWarehouseCity() }
+                )
+        }
+
         return similarProducts.map { product ->
             toProductResponse(
                 product,
-                availableSizes[product.id].orEmpty()
+                availableSizes[product.id].orEmpty(),
+                deliverTo,
+                warehouseCities[product.id].orEmpty()
             )
         }
     }
 
     private fun toProductResponse(
         product: Product,
-        availableSizes: List<String>
-    ): ProductResponse =
-        ProductResponse(
+        availableSizes: List<String>,
+        deliverTo: String?,
+        warehouseCities: List<String>
+    ): ProductResponse {
+        val hasStock = availableSizes.isNotEmpty()
+
+        return ProductResponse(
             id = product.id,
             name = product.name,
             category = product.category,
             price = product.price,
             imageUrl = product.imageUrl,
-            estimatedDelivery = deliveryEstimator.estimateDelivery(),
+            estimatedDelivery = deliverTo?.let {
+                deliveryEstimator.estimateEarliestDelivery(
+                    it,
+                    warehouseCities
+                )
+            },
+            estimatedDeliveryRange = if (deliverTo == null && hasStock) {
+                deliveryEstimator.estimateDeliveryRange()
+            } else {
+                null
+            },
             availableSizes = orderSizes(availableSizes)
         )
+    }
 
     private fun orderSizes(
         sizes: List<String>
@@ -170,7 +213,10 @@ class ProductService(
         }
     }
 
-    fun getProductDetails(productId: Long): ProductDetailsResponse {
+    fun getProductDetails(
+        productId: Long,
+        deliverTo: String?
+    ): ProductDetailsResponse {
         val rows = productRepository.findProductDetails(productId)
 
         if (rows.isEmpty()) {
@@ -178,16 +224,10 @@ class ProductService(
         }
 
         val product = rows.first()
-
-        val availableSizes = rows
-            .mapNotNull { row ->
-                row.getSize()
-                    ?.takeIf { row.getQuantity().orZero() > 0 }
-                    ?.name
-            }
-            .toSet()
-
-        val allSizes = ProductSize.allValues()
+        val sizes = buildSizeOptions(
+            rows,
+            deliverTo
+        )
 
         val productPrice = product.getPrice()
 
@@ -210,13 +250,17 @@ class ProductService(
             category = product.getCategory(),
             price = product.getPrice(),
             imageUrl = product.getImageUrl(),
-            estimatedDelivery = deliveryEstimator.estimateDelivery(),
-            sizes = allSizes.map { size ->
-                SizeOptionResponse(
-                    size = size,
-                    available = availableSizes.contains(size)
-                )
+            estimatedDelivery = if (deliverTo == null) {
+                null
+            } else {
+                earliestDeliveryFromSizes(sizes)
             },
+            estimatedDeliveryRange = if (deliverTo == null && sizes.any { it.available }) {
+                deliveryEstimator.estimateDeliveryRange()
+            } else {
+                null
+            },
+            sizes = sizes,
             priceBreakdown = PriceBreakdownResponse(
                 productPrice = productPrice,
                 platformFee = platformFee,
@@ -226,6 +270,64 @@ class ProductService(
             )
         )
     }
+
+    private fun buildSizeOptions(
+        rows: List<ProductDetailsProjection>,
+        deliverTo: String?
+    ): List<SizeOptionResponse> =
+        ProductSize.allValues().map { sizeName ->
+            val size = ProductSize.valueOf(sizeName)
+            val stockRows = rows.filter { row ->
+                row.getSize() == size &&
+                    row.getQuantity().orZero() > 0
+            }
+
+            val available = stockRows.isNotEmpty()
+            val deliveryRange = if (available && deliverTo == null) {
+                deliveryEstimator.estimateDeliveryRange()
+            } else {
+                null
+            }
+            val estimatedDelivery = if (!available || deliverTo == null) {
+                null
+            } else {
+                estimateDeliveryForStock(
+                    deliverTo,
+                    stockRows
+                )
+            }
+
+            SizeOptionResponse(
+                size = sizeName,
+                available = available,
+                estimatedDelivery = estimatedDelivery,
+                estimatedDeliveryRange = deliveryRange
+            )
+        }
+
+    private fun estimateDeliveryForStock(
+        deliverTo: String,
+        stockRows: List<ProductDetailsProjection>
+    ): LocalDate {
+        val localStock = stockRows.firstOrNull { row ->
+            row.getWarehouseCity() == deliverTo
+        }
+
+        val warehouseCity = localStock?.getWarehouseCity()
+            ?: stockRows.first().getWarehouseCity()
+
+        return deliveryEstimator.estimateDelivery(
+            deliverTo,
+            warehouseCity
+        )
+    }
+
+    private fun earliestDeliveryFromSizes(
+        sizes: List<SizeOptionResponse>
+    ): LocalDate? =
+        sizes.filter { it.available }
+            .mapNotNull { it.estimatedDelivery }
+            .minOrNull()
 
     companion object {
         private val SIMILAR_PRODUCT_PRICE_RANGE = BigDecimal("1000")

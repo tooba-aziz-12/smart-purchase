@@ -4,17 +4,10 @@ import {
     fetchProducts
 } from "../api/productApi.js";
 import { Link } from "react-router-dom";
+import { renderDeliveryEstimate } from "../utils/deliveryEstimate.js";
 
 // 6 ensures pagination is visible with the 12 seed products so the feature can be evaluated.
 const PAGE_SIZE = 6;
-
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-function formatDeliveryDate(isoDate) {
-    const [year, month, day] = isoDate.split("-");
-    return `${parseInt(day)} ${MONTHS[parseInt(month) - 1]} ${year}`;
-}
 
 function getProductLoadErrorMessage(error) {
 
@@ -27,6 +20,15 @@ function getProductLoadErrorMessage(error) {
     }
 
     return "We couldn’t load products right now. Please try again.";
+}
+
+function buildProductPath(productId, city) {
+    if (!city) {
+        return `/products/${productId}`;
+    }
+
+    const params = new URLSearchParams({ city });
+    return `/products/${productId}?${params.toString()}`;
 }
 
 function ProductListPage() {
@@ -166,7 +168,7 @@ function ProductListPage() {
                             value={city}
                             onChange={(e) => setCity(e.target.value)}
                         >
-                            <option value="">All Cities</option>
+                            <option value="">Deliver To</option>
                             <option value="Karachi">Karachi</option>
                             <option value="Lahore">Lahore</option>
                             <option value="Islamabad">Islamabad</option>
@@ -239,7 +241,7 @@ function ProductListPage() {
                     {products.map(product => (
                         <Link
                             key={product.id}
-                            to={`/products/${product.id}`}
+                            to={buildProductPath(product.id, city)}
                             style={{
                                 display: "block",
                                 textDecoration: "none",
@@ -338,7 +340,10 @@ function ProductListPage() {
                                         fontWeight: "500"
                                     }}
                                 >
-                                    Delivery by {formatDeliveryDate(product.estimatedDelivery)}
+                                    {renderDeliveryEstimate({
+                                        estimatedDelivery: product.estimatedDelivery,
+                                        estimatedDeliveryRange: product.estimatedDeliveryRange
+                                    })}
                                 </div>
                             </div>
                         </Link>
