@@ -25,3 +25,9 @@ spring:
 
 server:
   port: 8095
+
+smart-purchase:
+  pricing:
+    platform-fee: 200
+    delivery-fee: 250
+    vat-rate: 0.15

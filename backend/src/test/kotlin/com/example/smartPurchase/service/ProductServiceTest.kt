@@ -1,14 +1,15 @@
 package com.example.smartPurchase.service
 
+import com.example.smartPurchase.product.config.PricingProperties
 import com.example.smartPurchase.product.repository.ProductDetailsProjection
 import com.example.smartPurchase.product.repository.ProductRepository
 import com.example.smartPurchase.product.repository.ProductSearchProjection
 import com.example.smartPurchase.product.service.ProductService
 import com.example.smartPurchase.util.DeliveryEstimator
 import io.mockk.every
-import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -25,9 +26,16 @@ class ProductServiceTest {
     @MockK
     lateinit var deliveryEstimator: DeliveryEstimator
 
-    @InjectMockKs
     lateinit var productService: ProductService
 
+    @BeforeEach
+    fun setUp() {
+        productService = ProductService(
+            productRepository,
+            deliveryEstimator,
+            PricingProperties()
+        )
+    }
 
 
     @Test

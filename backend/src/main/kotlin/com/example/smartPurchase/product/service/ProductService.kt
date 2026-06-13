@@ -4,9 +4,11 @@ import com.example.smartPurchase.product.dto.PriceBreakdownResponse
 import com.example.smartPurchase.product.dto.ProductDetailsResponse
 import com.example.smartPurchase.product.dto.ProductResponse
 import com.example.smartPurchase.product.dto.SizeOptionResponse
+import com.example.smartPurchase.product.config.PricingProperties
 import com.example.smartPurchase.product.entity.ProductSize
 import com.example.smartPurchase.product.exception.InvalidProductFilterException
 import com.example.smartPurchase.product.exception.ProductNotFoundException
+import com.example.smartPurchase.product.repository.ProductSearchProjection
 import com.example.smartPurchase.product.repository.ProductRepository
 import com.example.smartPurchase.util.DeliveryEstimator
 import org.springframework.stereotype.Service
@@ -15,7 +17,8 @@ import java.math.BigDecimal
 @Service
 class ProductService(
     private val productRepository: ProductRepository,
-    private val deliveryEstimator: DeliveryEstimator
+    private val deliveryEstimator: DeliveryEstimator,
+    private val pricingProperties: PricingProperties
 
 ) {
 
@@ -40,19 +43,7 @@ class ProductService(
             maxPrice,
             size,
             city
-        ).map { product ->
-
-            ProductResponse(
-                id = product.getId(),
-                name = product.getName(),
-                category = product.getCategory(),
-                price = product.getPrice(),
-                estimatedDelivery = deliveryEstimator.estimateDelivery(),
-                availableSizes = product.getAvailableSizes()
-                    .split(",")
-                    .map { it.trim() }
-            )
-        }
+        ).map(::toProductResponse)
     }
 
     fun getSimilarProducts(productId: Long): List<ProductResponse> {
@@ -64,20 +55,22 @@ class ProductService(
             productId,
             SIMILAR_PRODUCT_PRICE_RANGE,
             SIMILAR_PRODUCT_LIMIT
-        ).map { product ->
-
-            ProductResponse(
-                id = product.getId(),
-                name = product.getName(),
-                category = product.getCategory(),
-                price = product.getPrice(),
-                estimatedDelivery = deliveryEstimator.estimateDelivery(),
-                availableSizes = product.getAvailableSizes()
-                    .split(",")
-                    .map { it.trim() }
-            )
-        }
+        ).map(::toProductResponse)
     }
+
+    private fun toProductResponse(
+        product: ProductSearchProjection
+    ): ProductResponse =
+        ProductResponse(
+            id = product.getId(),
+            name = product.getName(),
+            category = product.getCategory(),
+            price = product.getPrice(),
+            estimatedDelivery = deliveryEstimator.estimateDelivery(),
+            availableSizes = product.getAvailableSizes()
+                .split(",")
+                .map { it.trim() }
+        )
 
     private fun validateFilters(
         category: String?,
@@ -121,16 +114,16 @@ class ProductService(
 
         val productPrice = product.getPrice()
 
-        val platformFee = BigDecimal("200")
+        val platformFee = pricingProperties.platformFee
 
-        val deliveryFee = BigDecimal("250")
+        val deliveryFee = pricingProperties.deliveryFee
 
         val vat = (
                 productPrice
                     .add(platformFee)
                     .add(deliveryFee)
                 )
-            .multiply(BigDecimal("0.15"))
+            .multiply(pricingProperties.vatRate)
 
         val total = productPrice
             .add(platformFee)

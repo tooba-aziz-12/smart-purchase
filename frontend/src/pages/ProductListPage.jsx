@@ -1,10 +1,27 @@
-import { useEffect, useState } from "react";
-import { fetchProducts } from "../api/productApi.js";
+import { useCallback, useEffect, useState } from "react";
+import {
+    ApiError,
+    fetchProducts
+} from "../api/productApi.js";
 import { useNavigate } from "react-router-dom";
+
+function getProductLoadErrorMessage(error) {
+
+    if (error instanceof ApiError && error.status === 400) {
+        return error.message;
+    }
+
+    if (error instanceof ApiError) {
+        return "Something went wrong while loading products.";
+    }
+
+    return "We couldn’t load products right now. Please try again.";
+}
 
 function ProductListPage() {
 
     const [products, setProducts] = useState([]);
+    const [errorMessage, setErrorMessage] = useState("");
 
     const [category, setCategory] = useState("");
     const [size, setSize] = useState("");
@@ -13,20 +30,38 @@ function ProductListPage() {
     const [maxPrice, setMaxPrice] = useState("");
     const navigate = useNavigate();
 
-    useEffect(() => {
-        loadProducts();
+    const loadProducts = useCallback((filters) => {
+        fetchProducts(filters)
+            .then(products => {
+                setProducts(products);
+                setErrorMessage("");
+            })
+            .catch(error => {
+                setProducts([]);
+                setErrorMessage(
+                    getProductLoadErrorMessage(error)
+                );
+            });
     }, []);
 
-    const loadProducts = () => {
-        fetchProducts({
+    useEffect(() => {
+        loadProducts({
+            category: "",
+            size: "",
+            city: "",
+            minPrice: "",
+            maxPrice: ""
+        });
+    }, [loadProducts]);
+
+    const applyFilters = () => {
+        loadProducts({
             category,
             size,
             city,
             minPrice,
             maxPrice
-        })
-            .then(setProducts)
-            .catch(console.error);
+        });
     };
 
     return (
@@ -136,7 +171,7 @@ function ProductListPage() {
                         }}
                     >
                         <button
-                            onClick={loadProducts}
+                            onClick={applyFilters}
                             style={{
                                 backgroundColor: "#1f3a5f",
                                 color: "white",
@@ -151,6 +186,24 @@ function ProductListPage() {
                         </button>
                     </div>
                 </div>
+
+                {errorMessage && (
+                    <div
+                        role="alert"
+                        style={{
+                            background: "#fef2f2",
+                            border: "1px solid #fecaca",
+                            borderRadius: "12px",
+                            color: "#991b1b",
+                            fontWeight: "600",
+                            marginBottom: "24px",
+                            padding: "16px",
+                            textAlign: "center"
+                        }}
+                    >
+                        {errorMessage}
+                    </div>
+                )}
 
                 <div
                     style={{
@@ -253,7 +306,7 @@ function ProductListPage() {
                     ))}
                 </div>
 
-                {products.length === 0 && (
+                {!errorMessage && products.length === 0 && (
                     <div
                         style={{
                             textAlign: "center",

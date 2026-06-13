@@ -35,9 +35,11 @@ Rather than building a complete marketplace, I focused on solving the decision-m
 * Estimated delivery date
 * Complete price breakdown
 * Similar product recommendations
+* Structured backend error responses
 * Backend APIs
 * Unit tests
 * Integration tests
+* Frontend API and component tests
 
 ### Not Implemented
 
@@ -282,6 +284,13 @@ size
 quantity
 ```
 
+`WarehouseInventory` is modeled as a JPA entity and backed by database constraints:
+
+* `warehouse_id` references `warehouses.id`
+* `product_id` references `products.id`
+* `(warehouse_id, product_id, size)` is unique
+* `quantity` must be greater than or equal to zero
+
 ---
 
 ## Key Technical Decisions
@@ -316,6 +325,20 @@ Future implementations could use:
 
 ---
 
+### Pricing Assumptions
+
+The price breakdown is calculated using configured values in `application.yaml`:
+
+```text
+Platform Fee: 200 PKR
+Delivery Fee: 250 PKR
+VAT Rate: 15%
+```
+
+These values are intentionally simple for the assessment. In production they would likely be managed by pricing, tax, and delivery configuration rather than static application settings.
+
+---
+
 ### Similar Product Recommendations
 
 Similar products are exposed through a dedicated backend endpoint:
@@ -342,7 +365,7 @@ This keeps recommendation rules testable and consistent across clients without i
 ```bash
 cd backend
 
-mvn spring-boot:run
+./mvnw spring-boot:run
 ```
 
 Runs on:
@@ -359,6 +382,10 @@ http://localhost:8095
 cd frontend
 
 npm install
+
+# Optional: override API base URL
+cp .env.example .env
+
 npm run dev
 ```
 
@@ -372,9 +399,28 @@ http://localhost:5173
 
 ## Tests
 
+### Commands
+
+Backend:
+
+```bash
+cd backend
+./mvnw test
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm test
+npm run lint
+npm run build
+```
+
 ### Unit Tests
 
 ProductServiceTest
+DeliveryEstimatorTest
 
 Coverage:
 
@@ -383,6 +429,7 @@ Coverage:
 * Size availability calculation
 * Price breakdown calculation
 * Product not found scenario
+* Delivery estimate calculation
 
 ---
 
@@ -396,6 +443,7 @@ Coverage:
 * Filter by category
 * Filter by city
 * Filter by size
+* Filter by minimum and maximum price
 * Retrieve product details
 * Retrieve similar products
 * Invalid filters and not-found responses
@@ -409,6 +457,29 @@ HTTP
 → Repository
 → H2 Database
 ```
+
+---
+
+### Frontend Tests
+
+Frontend tests include API-helper tests and focused component tests.
+
+API helper tests validate:
+
+* Product listing request construction
+* Product details request construction
+* Similar products request construction
+* API error handling for non-2xx responses
+
+Component tests validate:
+
+* Product listing rendering and filter submission
+* Product details rendering
+* Size selection behavior
+* Price breakdown rendering
+* Similar product rendering
+
+These are not exhaustive browser end-to-end tests.
 
 ---
 
@@ -527,8 +598,11 @@ which better aligns with real-world marketplace experiences while still improvin
 | 5    | Frontend Design            | Generated initial React page structure and filtering UI ideas                 | Refined UI layout and user experience       |
 | 6    | Product Details Experience | Suggested size selection, delivery visibility, and pricing breakdown concepts | Selected final customer-facing information  |
 | 7    | Similar Products Feature   | Brainstormed recommendation approaches                                        | Chose category + price similarity strategy  |
-| 8    | Testing                    | Suggested unit and integration test scenarios                                 | Implemented and adjusted test coverage      |
-| 9    | Architecture Review        | Reviewed design decisions and tradeoffs                                       | Made final implementation decisions         |
-| 10   | Documentation              | Assisted in drafting README structure and content                             | Reviewed and edited final documentation     |
+| 8    | Error Handling             | Suggested structured API errors and frontend response handling                | Added explicit error DTO and response checks |
+| 9    | Validation                 | Reviewed filter edge cases and API behavior                                   | Kept strict validation for malformed filters |
+| 10   | Data Integrity             | Suggested inventory constraints                                               | Added entity mapping, foreign keys, uniqueness, and quantity checks |
+| 11   | Testing                    | Suggested unit, integration, and frontend test scenarios                      | Implemented backend and frontend tests      |
+| 12   | Architecture Review        | Reviewed design decisions and tradeoffs                                       | Made final implementation decisions         |
+| 13   | Documentation              | Assisted in drafting README structure and content                             | Reviewed and edited final documentation     |
 
 

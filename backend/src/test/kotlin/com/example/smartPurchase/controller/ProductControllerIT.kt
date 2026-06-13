@@ -1,5 +1,6 @@
 package com.example.smartPurchase.controller
 
+import com.example.smartPurchase.common.dto.ErrorResponse
 import com.example.smartPurchase.product.dto.ProductDetailsResponse
 import com.example.smartPurchase.product.dto.ProductResponse
 import junit.framework.TestCase.assertEquals
@@ -109,6 +110,86 @@ class ProductControllerIT {
         assertTrue(
             products.all {
                 "L" in it.availableSizes
+            }
+        )
+    }
+
+    @Test
+    fun `should filter products by minimum price`() {
+
+        val response = mockMvc.get("/products") {
+            param("minPrice", "9000")
+        }
+            .andExpect {
+                status { isOk() }
+            }
+            .andReturn()
+
+        val products: List<ProductResponse> =
+            objectMapper.readValue(
+                response.response.contentAsString,
+                object : TypeReference<List<ProductResponse>>() {}
+            )
+
+        assertTrue(products.isNotEmpty())
+
+        assertTrue(
+            products.all {
+                it.price >= BigDecimal("9000")
+            }
+        )
+    }
+
+    @Test
+    fun `should filter products by maximum price`() {
+
+        val response = mockMvc.get("/products") {
+            param("maxPrice", "6000")
+        }
+            .andExpect {
+                status { isOk() }
+            }
+            .andReturn()
+
+        val products: List<ProductResponse> =
+            objectMapper.readValue(
+                response.response.contentAsString,
+                object : TypeReference<List<ProductResponse>>() {}
+            )
+
+        assertTrue(products.isNotEmpty())
+
+        assertTrue(
+            products.all {
+                it.price <= BigDecimal("6000")
+            }
+        )
+    }
+
+    @Test
+    fun `should filter products by price range`() {
+
+        val response = mockMvc.get("/products") {
+            param("minPrice", "7000")
+            param("maxPrice", "8000")
+        }
+            .andExpect {
+                status { isOk() }
+            }
+            .andReturn()
+
+        val products: List<ProductResponse> =
+            objectMapper.readValue(
+                response.response.contentAsString,
+                object : TypeReference<List<ProductResponse>>() {}
+            )
+
+        assertTrue(products.isNotEmpty())
+
+        assertTrue(
+            products.all {
+                it.price >= BigDecimal("7000") &&
+                    it.price <= BigDecimal("8000")
             }
         )
     }
@@ -286,10 +367,20 @@ class ProductControllerIT {
     @Test
     fun `should return not found for unknown product`() {
 
-        mockMvc.get("/products/999")
+        val response = mockMvc.get("/products/999")
             .andExpect {
                 status { isNotFound() }
             }
+            .andReturn()
+
+        val error =
+            objectMapper.readValue(
+                response.response.contentAsString,
+                ErrorResponse::class.java
+            )
+
+        assertEquals(404, error.status)
+        assertEquals("Product not found", error.message)
     }
 
 }

@@ -280,99 +280,101 @@ function ProductDetailsPage() {
 
                         </div>
                     </div>
-                    <div
-                        style={{
-                            marginTop: "32px",
-                            background: "white",
-                            borderRadius: "16px",
-                            padding: "24px",
-                            boxShadow: "0 4px 20px rgba(0,0,0,0.08)"
-                        }}
-                    >
-                        <h2
-                            style={{
-                                marginTop: 0,
-                                marginBottom: "20px",
-                                fontSize: "24px",
-                                color: "#111827"
-                            }}
-                        >
-                            You May Also Like
-                        </h2>
-
+                    {similarProducts.length > 0 && (
                         <div
                             style={{
-                                display: "flex",
-                                gap: "16px",
-                                overflowX: "auto",
-                                paddingBottom: "8px"
+                                marginTop: "32px",
+                                background: "white",
+                                borderRadius: "16px",
+                                padding: "24px",
+                                boxShadow: "0 4px 20px rgba(0,0,0,0.08)"
                             }}
                         >
-                            {similarProducts.map(similarProduct => (
+                            <h2
+                                style={{
+                                    marginTop: 0,
+                                    marginBottom: "20px",
+                                    fontSize: "24px",
+                                    color: "#111827"
+                                }}
+                            >
+                                You May Also Like
+                            </h2>
 
-                                <div
-                                    key={similarProduct.id}
-                                    onClick={() =>
-                                        navigate(
-                                            `/products/${similarProduct.id}`
-                                        )
-                                    }
-                                    style={{
-                                        minWidth: "260px",
-                                        background: "#f8fafc",
-                                        border: "1px solid #e5e7eb",
-                                        borderRadius: "12px",
-                                        padding: "16px",
-                                        cursor: "pointer",
-                                        flexShrink: 0
-                                    }}
-                                >
-                                    <div
-                                        style={{
-                                            fontSize: "12px",
-                                            color: "#365a80",
-                                            textTransform: "uppercase",
-                                            fontWeight: "600",
-                                            marginBottom: "8px"
-                                        }}
-                                    >
-                                        {similarProduct.category}
-                                    </div>
+                            <div
+                                style={{
+                                    display: "flex",
+                                    gap: "16px",
+                                    overflowX: "auto",
+                                    paddingBottom: "8px"
+                                }}
+                            >
+                                {similarProducts.map(similarProduct => (
 
                                     <div
+                                        key={similarProduct.id}
+                                        onClick={() =>
+                                            navigate(
+                                                `/products/${similarProduct.id}`
+                                            )
+                                        }
                                         style={{
-                                            fontWeight: "700",
-                                            fontSize: "18px",
-                                            color: "#111827",
-                                            marginBottom: "12px"
+                                            minWidth: "260px",
+                                            background: "#f8fafc",
+                                            border: "1px solid #e5e7eb",
+                                            borderRadius: "12px",
+                                            padding: "16px",
+                                            cursor: "pointer",
+                                            flexShrink: 0
                                         }}
                                     >
-                                        {similarProduct.name}
+                                        <div
+                                            style={{
+                                                fontSize: "12px",
+                                                color: "#365a80",
+                                                textTransform: "uppercase",
+                                                fontWeight: "600",
+                                                marginBottom: "8px"
+                                            }}
+                                        >
+                                            {similarProduct.category}
+                                        </div>
+
+                                        <div
+                                            style={{
+                                                fontWeight: "700",
+                                                fontSize: "18px",
+                                                color: "#111827",
+                                                marginBottom: "12px"
+                                            }}
+                                        >
+                                            {similarProduct.name}
+                                        </div>
+
+                                        <div
+                                            style={{
+                                                color: "#1f3a5f",
+                                                fontWeight: "600",
+                                                marginBottom: "6px"
+                                            }}
+                                        >
+                                            PKR {similarProduct.price}
+                                        </div>
+
+                                        <div
+                                            style={{
+                                                color: "#6b7280",
+                                                fontSize: "14px"
+                                            }}
+                                        >
+                                            Delivery by {similarProduct.estimatedDelivery}
+                                        </div>
                                     </div>
 
-                                    <div
-                                        style={{
-                                            color: "#1f3a5f",
-                                            fontWeight: "600",
-                                            marginBottom: "6px"
-                                        }}
-                                    >
-                                        PKR {similarProduct.price}
-                                    </div>
-
-                                    <div
-                                        style={{
-                                            color: "#6b7280",
-                                            fontSize: "14px"
-                                        }}
-                                    >
-                                        Delivery by {similarProduct.estimatedDelivery}
-                                    </div>
-                                </div>
-
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>

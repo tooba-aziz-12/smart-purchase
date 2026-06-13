@@ -1,4 +1,27 @@
-const BASE_URL = "http://localhost:8095";
+const BASE_URL =
+    import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8095";
+
+export class ApiError extends Error {
+    constructor(response, body) {
+        super(body?.message ?? `Request failed with status ${response.status}`);
+        this.name = "ApiError";
+        this.status = response.status;
+        this.body = body;
+    }
+}
+
+async function requestJson(url) {
+
+    const response = await fetch(url);
+
+    const body = await response.json();
+
+    if (!response.ok) {
+        throw new ApiError(response, body);
+    }
+
+    return body;
+}
 
 export async function fetchProducts(filters) {
 
@@ -10,27 +33,21 @@ export async function fetchProducts(filters) {
         }
     });
 
-    const response = await fetch(
+    return requestJson(
         `${BASE_URL}/products?${params.toString()}`
     );
-
-    return response.json();
 }
 
 export async function fetchProductDetails(id) {
 
-    const response = await fetch(
+    return requestJson(
         `${BASE_URL}/products/${id}`
     );
-
-    return response.json();
 }
 
 export async function fetchSimilarProducts(id) {
 
-    const response = await fetch(
+    return requestJson(
         `${BASE_URL}/products/${id}/similar`
     );
-
-    return response.json();
 }
