@@ -105,11 +105,11 @@ describe("ProductDetailsPage", () => {
             )
         ).toBeTruthy();
 
-        expect(screen.getByText("PKR 7500")).toBeTruthy();
+        expect(screen.getByText("PKR 7,500")).toBeTruthy();
         expect(screen.getByText("PKR 200")).toBeTruthy();
         expect(screen.getByText("PKR 250")).toBeTruthy();
-        expect(screen.getByText("PKR 1192.5")).toBeTruthy();
-        expect(screen.getByText("PKR 9142.5")).toBeTruthy();
+        expect(screen.getByText("PKR 1,193")).toBeTruthy();
+        expect(screen.getByText("PKR 9,143")).toBeTruthy();
         expect(screen.getByText("Mint Green Embroidered Lawn Suit")).toBeTruthy();
         expect(
             screen.getByRole(

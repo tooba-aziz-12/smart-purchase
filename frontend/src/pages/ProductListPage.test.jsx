@@ -243,6 +243,51 @@ describe("ProductListPage", () => {
         });
     });
 
+    it("restores the page from the URL so returning to the listing keeps the page", async () => {
+
+        fetchProducts.mockResolvedValue(
+            productPage(
+                [
+                    {
+                        id: 7,
+                        name: "Formal Silk Suit",
+                        category: "Formal",
+                        price: 9500,
+                        imageUrl: "/products/Maroon Formal Suit.png",
+                        estimatedDelivery: null,
+                        availableSizes: ["S"]
+                    }
+                ],
+                {
+                    page: 1,
+                    totalElements: 12,
+                    totalPages: 2,
+                    last: true
+                }
+            )
+        );
+
+        render(
+            <MemoryRouter initialEntries={["/?page=1"]}>
+                <ProductListPage />
+            </MemoryRouter>
+        );
+
+        expect(
+            await screen.findByText("Formal Silk Suit")
+        ).toBeTruthy();
+
+        expect(fetchProducts).toHaveBeenCalledWith({
+            category: "",
+            size: "",
+            city: "",
+            minPrice: "",
+            maxPrice: "",
+            page: 1,
+            pageSize: 6
+        });
+    });
+
     it("shows backend validation errors", async () => {
 
         fetchProducts.mockRejectedValue(

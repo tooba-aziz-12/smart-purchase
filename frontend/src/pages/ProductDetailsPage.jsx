@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { useParams, Link, useSearchParams } from "react-router-dom";
+import {
+    useParams,
+    Link,
+    useSearchParams,
+    useNavigate,
+    useLocation
+} from "react-router-dom";
 import {
     ApiError,
     fetchProductDetails,
@@ -9,6 +15,8 @@ import {
 import {
     renderDeliveryEstimate
 } from "../utils/deliveryEstimate.js";
+
+import { formatPrice } from "../utils/formatPrice.js";
 
 function buildProductPath(productId, city) {
     if (!city) {
@@ -44,6 +52,18 @@ function ProductDetailsPage() {
     const [cartFeedback, setCartFeedback] = useState("");
 
     const [similarProducts, setSimilarProducts] = useState([]);
+
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    // Prefer browser back so the listing's page and filters are restored.
+    // Fall back to the listing root when the product was opened directly.
+    const handleBackClick = (event) => {
+        if (location.key !== "default") {
+            event.preventDefault();
+            navigate(-1);
+        }
+    };
 
     useEffect(() => {
 
@@ -99,6 +119,7 @@ function ProductDetailsPage() {
                 >
                     <Link
                         to="/"
+                        onClick={handleBackClick}
                         style={{
                             textDecoration: "none",
                             color: "#365a80",
@@ -164,6 +185,7 @@ function ProductDetailsPage() {
             >
                 <Link
                     to="/"
+                    onClick={handleBackClick}
                     style={{
                         textDecoration: "none",
                         color: "#365a80",
@@ -326,7 +348,7 @@ function ProductDetailsPage() {
                                 >
                                     <span>Product Price</span>
                                     <span>
-                                        PKR {product.priceBreakdown.productPrice}
+                                        {formatPrice(product.priceBreakdown.productPrice)}
                                     </span>
                                 </div>
 
@@ -339,7 +361,7 @@ function ProductDetailsPage() {
                                 >
                                     <span>Platform Fee</span>
                                     <span>
-                                        PKR {product.priceBreakdown.platformFee}
+                                        {formatPrice(product.priceBreakdown.platformFee)}
                                     </span>
                                 </div>
 
@@ -352,7 +374,7 @@ function ProductDetailsPage() {
                                 >
                                     <span>Standard Delivery Fee</span>
                                     <span>
-                                        PKR {product.priceBreakdown.deliveryFee}
+                                        {formatPrice(product.priceBreakdown.deliveryFee)}
                                     </span>
                                 </div>
 
@@ -365,7 +387,7 @@ function ProductDetailsPage() {
                                 >
                                     <span>VAT</span>
                                     <span>
-                                        PKR {product.priceBreakdown.vat}
+                                        {formatPrice(product.priceBreakdown.vat)}
                                     </span>
                                 </div>
 
@@ -382,7 +404,7 @@ function ProductDetailsPage() {
                                 >
                                     <span>Total</span>
                                     <span>
-                                        PKR {product.priceBreakdown.total}
+                                        {formatPrice(product.priceBreakdown.total)}
                                     </span>
                                 </div>
                             </div>
@@ -512,7 +534,7 @@ function ProductDetailsPage() {
                                                 marginBottom: "6px"
                                             }}
                                         >
-                                            PKR {similarProduct.price}
+                                            {formatPrice(similarProduct.price)}
                                         </div>
 
                                         <div

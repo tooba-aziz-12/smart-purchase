@@ -367,7 +367,7 @@ GET /products/{id}/similar
 Returns available alternatives selected by:
 
 * Same category
-* Price range within ±1000 PKR
+* Price range within ±1000 PKR (widens to ±3000 PKR only if the tight band returns nothing)
 * Excluding the current product
 
 ---
@@ -489,6 +489,12 @@ VAT Rate: 15%
 
 These values are intentionally simple for the assessment. In production they would likely be managed by pricing, tax, and delivery configuration rather than static application settings.
 
+#### Money Representation And Display
+
+Money is kept in `BigDecimal` end to end (entities, DTOs, pricing config) with a `DECIMAL(10,2)` column, so all arithmetic is exact and there is no floating-point rounding risk. Amounts are displayed as whole rupees with thousands separators (for example `PKR 14,500`) because PKR is not transacted in paisa at retail, which matches how South Asian storefronts present prices.
+
+This is a deliberate, market-appropriate call rather than a shortcut. If this grew into real checkout and payments, I would switch the persisted representation to integer minor units (paisa) to align with payment gateways, which typically operate in the smallest currency unit.
+
 ---
 
 ### Similar Product Recommendations
@@ -505,6 +511,8 @@ The backend selects alternatives using:
 * Price range within ±1000 PKR
 * Available inventory
 * Current product excluded
+
+If the tight ±1000 PKR band returns no alternatives (for example in categories where the closest priced item is further away), the query falls back to a wider ±3000 PKR band so the customer still sees relevant options instead of an empty section. The tight band is always tried first, so close matches are preferred when they exist.
 
 This keeps recommendation rules testable and consistent across clients without introducing a full recommendation engine.
 
@@ -563,7 +571,7 @@ cd backend
 Current backend suite:
 
 ```text
-29 tests passing
+47 tests passing
 ```
 
 Frontend:
@@ -578,7 +586,7 @@ npm run build
 Current frontend suite:
 
 ```text
-12 tests passing
+23 tests passing
 lint passing
 production build passing
 ```
@@ -672,9 +680,9 @@ Given the 3–4 hour time limit, I prioritized solving the core customer confide
 * Recommendation engine
 * Personalization
 
-### Similar products coverage in seed data
+### Similar products price band
 
-The similar products feature uses a ±1000 PKR price range within the same category. With the current seed data, Festive products (9500 PKR and 11000 PKR) and Formal products (12500 PKR and 14500 PKR) are more than 1000 PKR apart from each other, so no similar products are returned for those categories. The logic is correct; the seed data does not have enough products at close price points within those categories to exercise the feature. A wider price range or more seed products would resolve this for a demo.
+The similar products feature prefers a tight ±1000 PKR price range within the same category. With the current seed data, Festive products (9500 PKR and 11000 PKR) and Formal products (12500 PKR and 14500 PKR) are more than 1000 PKR apart, so the tight band alone would return nothing for those categories. To avoid an empty alternatives section, the query falls back to a wider ±3000 PKR band only when the tight band returns no results. Close matches are still preferred when they exist. In production this band would likely be tuned per category or replaced by a recommendation service.
 
 ---
 

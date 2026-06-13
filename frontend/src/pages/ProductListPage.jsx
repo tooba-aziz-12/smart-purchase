@@ -3,8 +3,9 @@ import {
     ApiError,
     fetchProducts
 } from "../api/productApi.js";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { renderDeliveryEstimate } from "../utils/deliveryEstimate.js";
+import { formatPrice } from "../utils/formatPrice.js";
 
 // 6 ensures pagination is visible with the 12 seed products so the feature can be evaluated.
 const PAGE_SIZE = 6;
@@ -31,7 +32,23 @@ function buildProductPath(productId, city) {
     return `/products/${productId}?${params.toString()}`;
 }
 
+function parsePage(value) {
+    const parsed = Number.parseInt(value ?? "", 10);
+    return Number.isNaN(parsed) || parsed < 0 ? 0 : parsed;
+}
+
 function ProductListPage() {
+
+    // Applied filters and the current page live in the URL so the listing can be
+    // restored when the customer returns from a product (for example via browser back).
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    const appliedCategory = searchParams.get("category") ?? "";
+    const appliedSize = searchParams.get("size") ?? "";
+    const appliedCity = searchParams.get("city") ?? "";
+    const appliedMinPrice = searchParams.get("minPrice") ?? "";
+    const appliedMaxPrice = searchParams.get("maxPrice") ?? "";
+    const page = parsePage(searchParams.get("page"));
 
     const [products, setProducts] = useState([]);
     const [pageInfo, setPageInfo] = useState({
@@ -43,15 +60,17 @@ function ProductListPage() {
     });
     const [errorMessage, setErrorMessage] = useState("");
 
-    const [category, setCategory] = useState("");
-    const [size, setSize] = useState("");
-    const [city, setCity] = useState("");
-    const [minPrice, setMinPrice] = useState("");
-    const [maxPrice, setMaxPrice] = useState("");
-    const loadProducts = useCallback((filters, page = 0) => {
+    // Filter inputs are staged locally and only written to the URL on submit.
+    const [category, setCategory] = useState(appliedCategory);
+    const [size, setSize] = useState(appliedSize);
+    const [city, setCity] = useState(appliedCity);
+    const [minPrice, setMinPrice] = useState(appliedMinPrice);
+    const [maxPrice, setMaxPrice] = useState(appliedMaxPrice);
+
+    const loadProducts = useCallback((filters, pageToLoad) => {
         fetchProducts({
             ...filters,
-            page,
+            page: pageToLoad,
             pageSize: PAGE_SIZE
         })
             .then(productPage => {
@@ -81,23 +100,43 @@ function ProductListPage() {
     }, []);
 
     useEffect(() => {
-        loadProducts({
-            category: "",
-            size: "",
-            city: "",
-            minPrice: "",
-            maxPrice: ""
-        });
-    }, [loadProducts]);
-
-    const filters = { category, size, city, minPrice, maxPrice };
+        loadProducts(
+            {
+                category: appliedCategory,
+                size: appliedSize,
+                city: appliedCity,
+                minPrice: appliedMinPrice,
+                maxPrice: appliedMaxPrice
+            },
+            page
+        );
+    }, [
+        appliedCategory,
+        appliedSize,
+        appliedCity,
+        appliedMinPrice,
+        appliedMaxPrice,
+        page,
+        loadProducts
+    ]);
 
     const applyFilters = () => {
-        loadProducts(filters, 0);
+        const next = new URLSearchParams();
+
+        if (category) next.set("category", category);
+        if (size) next.set("size", size);
+        if (city) next.set("city", city);
+        if (minPrice) next.set("minPrice", minPrice);
+        if (maxPrice) next.set("maxPrice", maxPrice);
+
+        // Omitting page resets the listing to the first page for a new filter.
+        setSearchParams(next);
     };
 
     const goToPage = (nextPage) => {
-        loadProducts(filters, nextPage);
+        const next = new URLSearchParams(searchParams);
+        next.set("page", String(nextPage));
+        setSearchParams(next);
     };
 
     return (
@@ -241,7 +280,7 @@ function ProductListPage() {
                     {products.map(product => (
                         <Link
                             key={product.id}
-                            to={buildProductPath(product.id, city)}
+                            to={buildProductPath(product.id, appliedCity)}
                             style={{
                                 display: "block",
                                 textDecoration: "none",
@@ -330,7 +369,7 @@ function ProductListPage() {
                                         fontWeight: "600"
                                     }}
                                 >
-                                    PKR {product.price}
+                                    {formatPrice(product.price)}
                                 </div>
 
                                 <div
