@@ -16,3 +16,21 @@ export async function fetchProducts(filters) {
 
     return response.json();
 }
+
+export async function fetchProductDetails(id) {
+
+    const response = await fetch(
+        `${BASE_URL}/products/${id}`
+    );
+
+    return response.json();
+}
+
+export async function fetchSimilarProducts(id) {
+
+    const response = await fetch(
+        `${BASE_URL}/products/${id}/similar`
+    );
+
+    return response.json();
+}

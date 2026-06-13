@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import {useParams, Link, useNavigate} from "react-router-dom";
+import {
+    fetchProductDetails,
+    fetchSimilarProducts
+} from "../api/productApi.js";
 
 function ProductDetailsPage() {
 
@@ -13,34 +17,13 @@ function ProductDetailsPage() {
 
     useEffect(() => {
 
-        fetch(`http://localhost:8095/products/${id}`)
-            .then(response => response.json())
+        fetchProductDetails(id)
             .then(product => {
 
                 setProduct(product);
 
-                const maxPrice =
-                    Number(product.price) + 1000;
-
-                return fetch(
-                    `http://localhost:8095/products?category=${product.category}&maxPrice=${maxPrice}`
-                )
-                    .then(response => response.json())
-                    .then(products => {
-
-                        setSimilarProducts(
-                            products
-                                .filter(
-                                    p => p.id !== Number(id)
-                                )
-                                .sort(
-                                    (a, b) =>
-                                        Math.abs(a.price - product.price)
-                                        -
-                                        Math.abs(b.price - product.price)
-                                )
-                        );
-                    });
+                return fetchSimilarProducts(id)
+                    .then(setSimilarProducts);
             })
             .catch(console.error);
 
@@ -383,7 +366,7 @@ function ProductDetailsPage() {
                                             fontSize: "14px"
                                         }}
                                     >
-                                        Delivery by {similarProduct.deliveryDate}
+                                        Delivery by {similarProduct.estimatedDelivery}
                                     </div>
                                 </div>
 

@@ -51,6 +51,40 @@ interface ProductRepository : JpaRepository<Product, Long> {
                 p.name AS name,
                 p.category AS category,
                 p.price AS price,
+                STRING_AGG(DISTINCT wi.size, ',') AS availableSizes
+            FROM products base
+            JOIN products p
+                ON p.category = base.category
+                AND p.id <> base.id
+            JOIN warehouse_inventory wi
+                ON p.id = wi.product_id
+            WHERE base.id = :productId
+            AND p.price BETWEEN base.price - :priceRange AND base.price + :priceRange
+            AND wi.quantity > 0
+            GROUP BY
+                p.id,
+                p.name,
+                p.category,
+                p.price,
+                base.price
+            ORDER BY ABS(p.price - base.price), p.id
+            LIMIT :limit
+        """,
+        nativeQuery = true
+    )
+    fun findSimilarProducts(
+        @Param("productId") productId: Long,
+        @Param("priceRange") priceRange: BigDecimal,
+        @Param("limit") limit: Int
+    ): List<ProductSearchProjection>
+
+    @Query(
+        value = """
+            SELECT
+                p.id AS id,
+                p.name AS name,
+                p.category AS category,
+                p.price AS price,
                 wi.size AS size,
                 wi.quantity AS quantity
             FROM products p

@@ -240,6 +240,20 @@ Returns:
 
 ---
 
+### Get Similar Products
+
+```http
+GET /products/{id}/similar
+```
+
+Returns available alternatives selected by:
+
+* Same category
+* Price range within ±1000 PKR
+* Excluding the current product
+
+---
+
 ## Data Model
 
 ### Product
@@ -304,14 +318,20 @@ Future implementations could use:
 
 ### Similar Product Recommendations
 
-Rather than creating a dedicated recommendation service, the existing listing API is reused.
+Similar products are exposed through a dedicated backend endpoint:
 
-The frontend requests products using:
+```http
+GET /products/{id}/similar
+```
+
+The backend selects alternatives using:
 
 * Same category
 * Price range within ±1000 PKR
+* Available inventory
+* Current product excluded
 
-This reduced implementation complexity while still delivering value.
+This keeps recommendation rules testable and consistent across clients without introducing a full recommendation engine.
 
 ---
 
@@ -377,6 +397,8 @@ Coverage:
 * Filter by city
 * Filter by size
 * Retrieve product details
+* Retrieve similar products
+* Invalid filters and not-found responses
 
 Integration tests validate:
 

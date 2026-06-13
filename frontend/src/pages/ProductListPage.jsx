@@ -246,7 +246,7 @@ function ProductListPage() {
                                         fontWeight: "500"
                                     }}
                                 >
-                                    Delivery by {product.deliveryDate}
+                                    Delivery by {product.estimatedDelivery}
                                 </div>
                             </div>
                         </div>

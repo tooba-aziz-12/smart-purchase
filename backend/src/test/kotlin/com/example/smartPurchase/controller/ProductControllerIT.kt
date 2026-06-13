@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import tools.jackson.core.type.TypeReference
 import tools.jackson.databind.ObjectMapper
+import java.math.BigDecimal
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -113,6 +114,91 @@ class ProductControllerIT {
     }
 
     @Test
+    fun `should reject negative minimum price`() {
+
+        mockMvc.get("/products") {
+            param("minPrice", "-1")
+        }
+            .andExpect {
+                status { isBadRequest() }
+            }
+    }
+
+    @Test
+    fun `should reject negative maximum price`() {
+
+        mockMvc.get("/products") {
+            param("maxPrice", "-1")
+        }
+            .andExpect {
+                status { isBadRequest() }
+            }
+    }
+
+    @Test
+    fun `should reject minimum price greater than maximum price`() {
+
+        mockMvc.get("/products") {
+            param("minPrice", "9000")
+            param("maxPrice", "5000")
+        }
+            .andExpect {
+                status { isBadRequest() }
+            }
+    }
+
+    @Test
+    fun `should reject unsupported size`() {
+
+        mockMvc.get("/products") {
+            param("size", "XL")
+        }
+            .andExpect {
+                status { isBadRequest() }
+            }
+    }
+
+    @Test
+    fun `should return empty results for unknown category`() {
+
+        val response = mockMvc.get("/products") {
+            param("category", "Shoes")
+        }
+            .andExpect {
+                status { isOk() }
+            }
+            .andReturn()
+
+        val products: List<ProductResponse> =
+            objectMapper.readValue(
+                response.response.contentAsString,
+                object : TypeReference<List<ProductResponse>>() {}
+            )
+
+        assertTrue(products.isEmpty())
+    }
+
+    @Test
+    fun `should return empty results for unknown city`() {
+
+        val response = mockMvc.get("/products") {
+            param("city", "Multan")
+        }
+            .andExpect {
+                status { isOk() }
+            }
+            .andReturn()
+
+        val products: List<ProductResponse> =
+            objectMapper.readValue(
+                response.response.contentAsString,
+                object : TypeReference<List<ProductResponse>>() {}
+            )
+
+        assertTrue(products.isEmpty())
+    }
+
+    @Test
     fun `should return product details`() {
 
         val response = mockMvc.get("/products/1")
@@ -149,6 +235,52 @@ class ProductControllerIT {
                 it.size == "L"
             }.available
         )
+    }
+
+    @Test
+    fun `should return similar products`() {
+
+        val response = mockMvc.get("/products/1/similar")
+            .andExpect {
+                status { isOk() }
+            }
+            .andReturn()
+
+        val products: List<ProductResponse> =
+            objectMapper.readValue(
+                response.response.contentAsString,
+                object : TypeReference<List<ProductResponse>>() {}
+            )
+
+        assertTrue(products.isNotEmpty())
+
+        assertTrue(
+            products.none {
+                it.id == 1L
+            }
+        )
+
+        assertTrue(
+            products.all {
+                it.category == "Lawn"
+            }
+        )
+
+        assertTrue(
+            products.all {
+                it.price >= BigDecimal("6500") &&
+                    it.price <= BigDecimal("8500")
+            }
+        )
+    }
+
+    @Test
+    fun `should return not found for similar products of unknown product`() {
+
+        mockMvc.get("/products/999/similar")
+            .andExpect {
+                status { isNotFound() }
+            }
     }
 
     @Test

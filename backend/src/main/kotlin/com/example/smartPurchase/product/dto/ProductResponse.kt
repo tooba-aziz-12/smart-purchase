@@ -8,6 +8,6 @@ data class ProductResponse(
     val name: String,
     val category: String,
     val price: BigDecimal,
-    val deliveryDate: LocalDate,
+    val estimatedDelivery: LocalDate,
     val availableSizes: List<String>
 )

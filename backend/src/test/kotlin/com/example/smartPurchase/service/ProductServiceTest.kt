@@ -204,4 +204,74 @@ class ProductServiceTest {
             productService.getProductDetails(999)
         }
     }
+
+    @Test
+    fun `should return similar products`() {
+
+        val detailsProjection = object : ProductDetailsProjection {
+
+            override fun getId() = 1L
+
+            override fun getName() = "Blue Lawn Suit"
+
+            override fun getCategory() = "Lawn"
+
+            override fun getPrice() =
+                BigDecimal("7500")
+
+            override fun getSize() = "M"
+
+            override fun getQuantity() = 3
+        }
+
+        val similarProjection = object : ProductSearchProjection {
+
+            override fun getId() = 2L
+
+            override fun getName() = "Green Lawn Suit"
+
+            override fun getCategory() = "Lawn"
+
+            override fun getPrice() =
+                BigDecimal("6900")
+
+            override fun getAvailableSizes() = "M"
+        }
+
+        every {
+            productRepository.findProductDetails(1)
+        } returns listOf(detailsProjection)
+
+        every {
+            productRepository.findSimilarProducts(
+                1,
+                BigDecimal("1000"),
+                4
+            )
+        } returns listOf(similarProjection)
+
+        every {
+            deliveryEstimator.estimateDelivery()
+        } returns LocalDate.now().plusDays(3)
+
+        val result =
+            productService.getSimilarProducts(1)
+
+        assertEquals(1, result.size)
+        assertEquals(2L, result[0].id)
+        assertEquals("Green Lawn Suit", result[0].name)
+        assertEquals(listOf("M"), result[0].availableSizes)
+    }
+
+    @Test
+    fun `should throw when finding similar products for unknown product`() {
+
+        every {
+            productRepository.findProductDetails(999)
+        } returns emptyList()
+
+        assertThrows<IllegalArgumentException> {
+            productService.getSimilarProducts(999)
+        }
+    }
 }

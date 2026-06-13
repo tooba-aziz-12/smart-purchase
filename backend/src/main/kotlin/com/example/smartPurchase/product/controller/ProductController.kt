@@ -37,4 +37,10 @@ class ProductController(
         @PathVariable id: Long
     ): ProductDetailsResponse =
         productService.getProductDetails(id)
+
+    @GetMapping("/{id}/similar")
+    fun getSimilarProducts(
+        @PathVariable id: Long
+    ): List<ProductResponse> =
+        productService.getSimilarProducts(id)
 }
