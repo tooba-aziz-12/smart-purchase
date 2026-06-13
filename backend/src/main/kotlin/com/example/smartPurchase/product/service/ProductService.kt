@@ -4,6 +4,7 @@ import com.example.smartPurchase.product.dto.PriceBreakdownResponse
 import com.example.smartPurchase.product.dto.ProductDetailsResponse
 import com.example.smartPurchase.product.dto.ProductResponse
 import com.example.smartPurchase.product.dto.SizeOptionResponse
+import com.example.smartPurchase.product.exception.ProductNotFoundException
 import com.example.smartPurchase.product.repository.ProductRepository
 import com.example.smartPurchase.util.DeliveryEstimator
 import org.springframework.stereotype.Service
@@ -47,7 +48,7 @@ class ProductService(
         val rows = productRepository.findProductDetails(productId)
 
         if (rows.isEmpty()) {
-            throw IllegalArgumentException("Product not found")
+            throw ProductNotFoundException("Product not found")
         }
 
         val product = rows.first()

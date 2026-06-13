@@ -19,7 +19,4 @@ data class Product(
     val category: String = "",
 
     val price: BigDecimal = BigDecimal.ZERO,
-
-    @Column(name = "delivery_date")
-    val deliveryDate: LocalDate = LocalDate.now()
 )

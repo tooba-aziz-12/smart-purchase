@@ -151,5 +151,13 @@ class ProductControllerIT {
         )
     }
 
+    @Test
+    fun `should return not found for unknown product`() {
+
+        mockMvc.get("/products/999")
+            .andExpect {
+                status { isNotFound() }
+            }
+    }
 
 }
