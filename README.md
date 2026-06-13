@@ -132,6 +132,8 @@ Products are selected using:
 * Same category
 * Similar price range
 
+If no matching alternatives are available, the similar products section is hidden instead of showing an empty recommendation area.
+
 This reduces abandonment when a customer is unsure about a particular product.
 
 ---
@@ -165,6 +167,14 @@ Responsibilities:
 * Display products
 * Apply filters
 * Navigate to product details
+* Show user-facing loading failure messages
+
+Product listing error handling:
+
+* Network or backend unavailable: `We couldn’t load products right now. Please try again.`
+* Invalid filters from the backend: displays the backend validation message
+* Unexpected API/server errors: `Something went wrong while loading products.`
+* Successful empty result: `No products found.`
 
 ### ProductDetailsPage
 
@@ -253,6 +263,24 @@ Returns available alternatives selected by:
 * Same category
 * Price range within ±1000 PKR
 * Excluding the current product
+
+---
+
+### Error Response
+
+Expected API errors return a structured response:
+
+```json
+{
+  "timestamp": "2026-06-13T20:00:00+05:00",
+  "status": 404,
+  "error": "Not Found",
+  "message": "Product not found",
+  "path": "/products/999"
+}
+```
+
+The frontend uses these responses to distinguish validation errors from unexpected failures.
 
 ---
 
@@ -408,6 +436,12 @@ cd backend
 ./mvnw test
 ```
 
+Current backend suite:
+
+```text
+25 tests passing
+```
+
 Frontend:
 
 ```bash
@@ -415,6 +449,14 @@ cd frontend
 npm test
 npm run lint
 npm run build
+```
+
+Current frontend suite:
+
+```text
+10 tests passing
+lint passing
+production build passing
 ```
 
 ### Unit Tests

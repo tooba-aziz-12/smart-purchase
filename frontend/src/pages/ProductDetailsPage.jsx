@@ -1,9 +1,23 @@
 import { useEffect, useState } from "react";
 import {useParams, Link, useNavigate} from "react-router-dom";
 import {
+    ApiError,
     fetchProductDetails,
     fetchSimilarProducts
 } from "../api/productApi.js";
+
+function getProductDetailsErrorMessage(error) {
+
+    if (error instanceof ApiError && error.status === 404) {
+        return "Product not found.";
+    }
+
+    if (error instanceof ApiError) {
+        return "Something went wrong while loading product details.";
+    }
+
+    return "We couldn’t load product details right now. Please try again.";
+}
 
 function ProductDetailsPage() {
 
@@ -11,6 +25,8 @@ function ProductDetailsPage() {
 
     const [product, setProduct] = useState(null);
     const [selectedSize, setSelectedSize] = useState("");
+    const [errorMessage, setErrorMessage] = useState("");
+    const [actionMessage, setActionMessage] = useState("");
     const navigate = useNavigate();
 
     const [similarProducts, setSimilarProducts] = useState([]);
@@ -21,25 +37,84 @@ function ProductDetailsPage() {
             .then(product => {
 
                 setProduct(product);
+                setErrorMessage("");
+                setActionMessage("");
 
                 return fetchSimilarProducts(id)
-                    .then(setSimilarProducts);
+                    .then(setSimilarProducts)
+                    .catch(() => {
+                        setSimilarProducts([]);
+                    });
             })
-            .catch(console.error);
+            .catch(error => {
+                setProduct(null);
+                setSimilarProducts([]);
+                setErrorMessage(
+                    getProductDetailsErrorMessage(error)
+                );
+            });
 
     }, [id]);
 
     const addToCart = () => {
 
         if (!selectedSize) {
-            alert("Please select a size");
+            setActionMessage("Please select a size");
             return;
         }
 
-        alert(
+        setActionMessage(
             `Added ${product.name} (${selectedSize}) to cart`
         );
     };
+
+    if (errorMessage) {
+        return (
+            <div
+                style={{
+                    minHeight: "100vh",
+                    backgroundColor: "#f5f7fb",
+                    padding: "40px",
+                    fontFamily:
+                        "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+                }}
+            >
+                <div
+                    style={{
+                        maxWidth: "1000px",
+                        margin: "0 auto"
+                    }}
+                >
+                    <Link
+                        to="/"
+                        style={{
+                            textDecoration: "none",
+                            color: "#365a80",
+                            fontWeight: "600"
+                        }}
+                    >
+                        ← Back to Products
+                    </Link>
+
+                    <div
+                        role="alert"
+                        style={{
+                            background: "#fef2f2",
+                            border: "1px solid #fecaca",
+                            borderRadius: "12px",
+                            color: "#991b1b",
+                            fontWeight: "600",
+                            marginTop: "24px",
+                            padding: "16px",
+                            textAlign: "center"
+                        }}
+                    >
+                        {errorMessage}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (!product) {
         return <div>Loading...</div>;
@@ -121,9 +196,10 @@ function ProductDetailsPage() {
                                     <button
                                         key={sizeOption.size}
                                         disabled={!sizeOption.available}
-                                        onClick={() =>
-                                            setSelectedSize(sizeOption.size)
-                                        }
+                                        onClick={() => {
+                                            setSelectedSize(sizeOption.size);
+                                            setActionMessage("");
+                                        }}
                                         style={{
                                             width: "50px",
                                             height: "50px",
@@ -277,6 +353,23 @@ function ProductDetailsPage() {
                             >
                                 Add To Cart
                             </button>
+
+                            {actionMessage && (
+                                <div
+                                    role="status"
+                                    style={{
+                                        color:
+                                            selectedSize
+                                                ? "#166534"
+                                                : "#991b1b",
+                                        fontWeight: "600",
+                                        marginTop: "12px",
+                                        textAlign: "center"
+                                    }}
+                                >
+                                    {actionMessage}
+                                </div>
+                            )}
 
                         </div>
                     </div>

@@ -18,11 +18,18 @@ import {
 } from "vitest";
 import ProductDetailsPage from "./ProductDetailsPage.jsx";
 import {
+    ApiError,
     fetchProductDetails,
     fetchSimilarProducts
 } from "../api/productApi.js";
 
 vi.mock("../api/productApi.js", () => ({
+    ApiError: class ApiError extends Error {
+        constructor(response, body) {
+            super(body?.message ?? `Request failed with status ${response.status}`);
+            this.status = response.status;
+        }
+    },
     fetchProductDetails: vi.fn(),
     fetchSimilarProducts: vi.fn()
 }));
@@ -112,8 +119,20 @@ describe("ProductDetailsPage", () => {
             ).disabled
         ).toBe(true);
 
-        const alert = vi.spyOn(window, "alert").mockImplementation(() => {});
         const user = userEvent.setup();
+
+        await user.click(
+            screen.getByRole(
+                "button",
+                {
+                    name: "Add To Cart"
+                }
+            )
+        );
+
+        expect(
+            screen.getByRole("status").textContent
+        ).toBe("Please select a size");
 
         await user.click(
             screen.getByRole(
@@ -132,7 +151,9 @@ describe("ProductDetailsPage", () => {
             )
         );
 
-        expect(alert).toHaveBeenCalledWith(
+        expect(
+            screen.getByRole("status").textContent
+        ).toBe(
             "Added Blue Lawn Suit (M) to cart"
         );
     });
@@ -198,5 +219,35 @@ describe("ProductDetailsPage", () => {
                 }
             )
         ).toBeNull();
+    });
+
+    it("shows an error when product details cannot be loaded", async () => {
+
+        fetchProductDetails.mockRejectedValue(
+            new ApiError(
+                {
+                    status: 404
+                },
+                {
+                    message: "Product not found"
+                }
+            )
+        );
+
+        render(
+            <MemoryRouter initialEntries={["/products/999"]}>
+                <Routes>
+                    <Route
+                        path="/products/:id"
+                        element={<ProductDetailsPage />}
+                    />
+                </Routes>
+            </MemoryRouter>
+        );
+
+        const alert =
+            await screen.findByRole("alert");
+
+        expect(alert.textContent).toBe("Product not found.");
     });
 });

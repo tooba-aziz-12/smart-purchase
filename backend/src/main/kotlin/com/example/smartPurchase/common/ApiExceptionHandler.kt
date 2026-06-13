@@ -51,6 +51,17 @@ class ApiExceptionHandler {
             request
         )
 
+    @ExceptionHandler(Exception::class)
+    fun handleUnexpectedError(
+        exception: Exception,
+        request: HttpServletRequest
+    ): ResponseEntity<ErrorResponse> =
+        errorResponse(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "Something went wrong",
+            request
+        )
+
     private fun errorResponse(
         status: HttpStatus,
         message: String,

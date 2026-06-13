@@ -16,7 +16,7 @@ spring:
     defer-datasource-initialization: true
     hibernate:
       ddl-auto: none
-    show-sql: true
+    show-sql: false
 
   h2:
     console:
