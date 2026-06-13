@@ -3,6 +3,8 @@ package com.example.smartPurchase.service
 import com.example.smartPurchase.product.config.PricingProperties
 import com.example.smartPurchase.product.entity.Product
 import com.example.smartPurchase.product.entity.ProductSize
+import com.example.smartPurchase.product.exception.InvalidProductFilterException
+import com.example.smartPurchase.product.exception.ProductNotFoundException
 import com.example.smartPurchase.product.repository.ProductSizeProjection
 import com.example.smartPurchase.product.repository.ProductDetailsProjection
 import com.example.smartPurchase.product.repository.ProductRepository
@@ -48,9 +50,10 @@ class ProductServiceTest {
 
         val product = Product(
             id = 1L,
-            name = "Blue Lawn Suit",
+            name = "Sky Blue Embroidered Lawn Suit",
             category = "Lawn",
-            price = BigDecimal("7500")
+            price = BigDecimal("7500"),
+            imageUrl = "/products/Blue Lawn Suit.png"
         )
 
         val mediumSize = object : ProductSizeProjection {
@@ -68,7 +71,7 @@ class ProductServiceTest {
         }
 
         every {
-            productRepository.search(
+            productRepository.findProducts(
                 null,
                 null,
                 null,
@@ -104,7 +107,8 @@ class ProductServiceTest {
         )
 
         assertEquals(1, result.content.size)
-        assertEquals("Blue Lawn Suit", result.content[0].name)
+        assertEquals("Sky Blue Embroidered Lawn Suit", result.content[0].name)
+        assertEquals("/products/Blue Lawn Suit.png", result.content[0].imageUrl)
         assertEquals(listOf("M", "L"), result.content[0].availableSizes)
     }
 
@@ -115,12 +119,14 @@ class ProductServiceTest {
 
             override fun getId() = 1L
 
-            override fun getName() = "Blue Lawn Suit"
+            override fun getName() = "Sky Blue Embroidered Lawn Suit"
 
             override fun getCategory() = "Lawn"
 
             override fun getPrice() =
                 BigDecimal("7500")
+
+            override fun getImageUrl() = "/products/Blue Lawn Suit.png"
 
             override fun getSize() = ProductSize.M
 
@@ -131,12 +137,14 @@ class ProductServiceTest {
 
             override fun getId() = 1L
 
-            override fun getName() = "Blue Lawn Suit"
+            override fun getName() = "Sky Blue Embroidered Lawn Suit"
 
             override fun getCategory() = "Lawn"
 
             override fun getPrice() =
                 BigDecimal("7500")
+
+            override fun getImageUrl() = "/products/Blue Lawn Suit.png"
 
             override fun getSize() = ProductSize.L
 
@@ -183,12 +191,14 @@ class ProductServiceTest {
 
             override fun getId() = 1L
 
-            override fun getName() = "Blue Lawn Suit"
+            override fun getName() = "Sky Blue Embroidered Lawn Suit"
 
             override fun getCategory() = "Lawn"
 
             override fun getPrice() =
                 BigDecimal("7500")
+
+            override fun getImageUrl() = "/products/Blue Lawn Suit.png"
 
             override fun getSize() = ProductSize.M
 
@@ -217,12 +227,12 @@ class ProductServiceTest {
         )
 
         assertEquals(
-            BigDecimal("1192.50"),
+            BigDecimal("1125.00"),
             result.priceBreakdown.vat
         )
 
         assertEquals(
-            BigDecimal("9142.50"),
+            BigDecimal("9075.00"),
             result.priceBreakdown.total
         )
     }
@@ -234,7 +244,7 @@ class ProductServiceTest {
             productRepository.findProductDetails(999)
         } returns emptyList()
 
-        assertThrows<IllegalArgumentException> {
+        assertThrows<ProductNotFoundException> {
             productService.getProductDetails(999)
         }
     }
@@ -246,12 +256,14 @@ class ProductServiceTest {
 
             override fun getId() = 1L
 
-            override fun getName() = "Blue Lawn Suit"
+            override fun getName() = "Sky Blue Embroidered Lawn Suit"
 
             override fun getCategory() = "Lawn"
 
             override fun getPrice() =
                 BigDecimal("7500")
+
+            override fun getImageUrl() = "/products/Blue Lawn Suit.png"
 
             override fun getSize() = ProductSize.M
 
@@ -260,9 +272,10 @@ class ProductServiceTest {
 
         val similarProduct = Product(
             id = 2L,
-            name = "Green Lawn Suit",
+            name = "Mint Green Embroidered Lawn Suit",
             category = "Lawn",
-            price = BigDecimal("6900")
+            price = BigDecimal("6900"),
+            imageUrl = "/products/Green Lawn suit.png"
         )
 
         val mediumSize = object : ProductSizeProjection {
@@ -273,8 +286,8 @@ class ProductServiceTest {
         }
 
         every {
-            productRepository.findProductDetails(1)
-        } returns listOf(detailsProjection)
+            productRepository.existsById(1)
+        } returns true
 
         every {
             productRepository.findSimilarProducts(
@@ -300,18 +313,68 @@ class ProductServiceTest {
 
         assertEquals(1, result.size)
         assertEquals(2L, result[0].id)
-        assertEquals("Green Lawn Suit", result[0].name)
+        assertEquals("Mint Green Embroidered Lawn Suit", result[0].name)
+        assertEquals("/products/Green Lawn suit.png", result[0].imageUrl)
         assertEquals(listOf("M"), result[0].availableSizes)
+    }
+
+    @Test
+    fun `should throw when minimum price is negative`() {
+        assertThrows<InvalidProductFilterException> {
+            productService.getProducts(null, BigDecimal("-1"), null, null, null, 0, 12)
+        }
+    }
+
+    @Test
+    fun `should throw when maximum price is negative`() {
+        assertThrows<InvalidProductFilterException> {
+            productService.getProducts(null, null, BigDecimal("-1"), null, null, 0, 12)
+        }
+    }
+
+    @Test
+    fun `should throw when minimum price exceeds maximum price`() {
+        assertThrows<InvalidProductFilterException> {
+            productService.getProducts(null, BigDecimal("9000"), BigDecimal("5000"), null, null, 0, 12)
+        }
+    }
+
+    @Test
+    fun `should throw when size is not supported`() {
+        assertThrows<InvalidProductFilterException> {
+            productService.getProducts(null, null, null, "XL", null, 0, 12)
+        }
+    }
+
+    @Test
+    fun `should throw when page is negative`() {
+        assertThrows<InvalidProductFilterException> {
+            productService.getProducts(null, null, null, null, null, -1, 12)
+        }
+    }
+
+    @Test
+    fun `should throw when page size is zero`() {
+        assertThrows<InvalidProductFilterException> {
+            productService.getProducts(null, null, null, null, null, 0, 0)
+        }
+    }
+
+    @Test
+    fun `should throw when page size exceeds maximum`() {
+        assertThrows<InvalidProductFilterException> {
+            productService.getProducts(null, null, null, null, null, 0, 51)
+        }
     }
 
     @Test
     fun `should throw when finding similar products for unknown product`() {
 
         every {
-            productRepository.findProductDetails(999)
-        } returns emptyList()
+            productRepository.existsById(999)
+        } returns false
 
-        assertThrows<IllegalArgumentException> {
+        assertThrows<ProductNotFoundException> {
             productService.getSimilarProducts(999)
         }
     }

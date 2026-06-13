@@ -242,9 +242,10 @@ Response:
   "content": [
     {
       "id": 1,
-      "name": "Blue Lawn Suit",
+      "name": "Sky Blue Embroidered Lawn Suit",
       "category": "Lawn",
       "price": 7500,
+      "imageUrl": "/products/Blue Lawn Suit.png",
       "estimatedDelivery": "2026-06-18",
       "availableSizes": ["M", "L"]
     }
@@ -321,6 +322,7 @@ id
 name
 category
 price
+imageUrl
 ```
 
 ### Warehouse
@@ -586,6 +588,10 @@ Given the 3–4 hour time limit, I prioritized solving the core customer confide
 * Recommendation engine
 * Personalization
 
+### Similar products coverage in seed data
+
+The similar products feature uses a ±1000 PKR price range within the same category. With the current seed data, Festive products (9500 PKR and 11000 PKR) and Formal products (12500 PKR and 14500 PKR) are more than 1000 PKR apart from each other, so no similar products are returned for those categories. The logic is correct; the seed data does not have enough products at close price points within those categories to exercise the feature. A wider price range or more seed products would resolve this for a demo.
+
 ---
 
 ## Future Improvements
@@ -629,6 +635,7 @@ Given the 3–4 hour time limit, I prioritized solving the core customer confide
 ### AI Tool Used
 
 * ChatGPT
+* Claude
 
 ### What AI Helped With
 

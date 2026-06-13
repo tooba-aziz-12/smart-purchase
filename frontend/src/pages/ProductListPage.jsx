@@ -3,9 +3,18 @@ import {
     ApiError,
     fetchProducts
 } from "../api/productApi.js";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
+// 6 ensures pagination is visible with the 12 seed products so the feature can be evaluated.
 const PAGE_SIZE = 6;
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function formatDeliveryDate(isoDate) {
+    const [year, month, day] = isoDate.split("-");
+    return `${parseInt(day)} ${MONTHS[parseInt(month) - 1]} ${year}`;
+}
 
 function getProductLoadErrorMessage(error) {
 
@@ -37,22 +46,6 @@ function ProductListPage() {
     const [city, setCity] = useState("");
     const [minPrice, setMinPrice] = useState("");
     const [maxPrice, setMaxPrice] = useState("");
-    const navigate = useNavigate();
-
-    const currentFilters = useCallback(() => ({
-        category,
-        size,
-        city,
-        minPrice,
-        maxPrice
-    }), [
-        category,
-        size,
-        city,
-        minPrice,
-        maxPrice
-    ]);
-
     const loadProducts = useCallback((filters, page = 0) => {
         fetchProducts({
             ...filters,
@@ -95,18 +88,14 @@ function ProductListPage() {
         });
     }, [loadProducts]);
 
+    const filters = { category, size, city, minPrice, maxPrice };
+
     const applyFilters = () => {
-        loadProducts(
-            currentFilters(),
-            0
-        );
+        loadProducts(filters, 0);
     };
 
     const goToPage = (nextPage) => {
-        loadProducts(
-            currentFilters(),
-            nextPage
-        );
+        loadProducts(filters, nextPage);
     };
 
     return (
@@ -135,16 +124,6 @@ function ProductListPage() {
                 >
                     Smart Purchase
                 </h1>
-
-                <p
-                    style={{
-                        textAlign: "center",
-                        color: "#6b7280",
-                        marginBottom: "40px"
-                    }}
-                >
-                    Find products available across warehouses
-                </p>
 
                 <div
                     style={{
@@ -258,17 +237,32 @@ function ProductListPage() {
                     }}
                 >
                     {products.map(product => (
-                        <div
+                        <Link
                             key={product.id}
-                            onClick={() => navigate(`/products/${product.id}`)}
+                            to={`/products/${product.id}`}
                             style={{
+                                display: "block",
+                                textDecoration: "none",
+                                color: "inherit",
                                 background: "white",
                                 borderRadius: "16px",
                                 padding: "20px",
-                                boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
-                                cursor: "pointer"
+                                boxShadow: "0 4px 16px rgba(0,0,0,0.08)"
                             }}
                         >
+                            <img
+                                src={product.imageUrl}
+                                alt={product.name}
+                                style={{
+                                    width: "100%",
+                                    height: "340px",
+                                    objectFit: "cover",
+                                    objectPosition: "center top",
+                                    borderRadius: "12px",
+                                    marginBottom: "16px"
+                                }}
+                            />
+
                             <div
                                 style={{
                                     fontSize: "12px",
@@ -344,10 +338,10 @@ function ProductListPage() {
                                         fontWeight: "500"
                                     }}
                                 >
-                                    Delivery by {product.estimatedDelivery}
+                                    Delivery by {formatDeliveryDate(product.estimatedDelivery)}
                                 </div>
                             </div>
-                        </div>
+                        </Link>
                     ))}
                 </div>
 

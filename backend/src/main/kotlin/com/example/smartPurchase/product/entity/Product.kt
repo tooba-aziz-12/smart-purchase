@@ -1,8 +1,6 @@
 package com.example.smartPurchase.product.entity
 
-import jakarta.persistence.Column
 import java.math.BigDecimal
-import java.time.LocalDate
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
@@ -19,4 +17,6 @@ data class Product(
     val category: String = "",
 
     val price: BigDecimal = BigDecimal.ZERO,
+
+    val imageUrl: String = ""
 )

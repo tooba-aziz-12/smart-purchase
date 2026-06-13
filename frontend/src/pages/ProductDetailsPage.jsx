@@ -1,10 +1,18 @@
 import { useEffect, useState } from "react";
-import {useParams, Link, useNavigate} from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import {
     ApiError,
     fetchProductDetails,
     fetchSimilarProducts
 } from "../api/productApi.js";
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function formatDeliveryDate(isoDate) {
+    const [year, month, day] = isoDate.split("-");
+    return `${parseInt(day)} ${MONTHS[parseInt(month) - 1]} ${year}`;
+}
 
 function getProductDetailsErrorMessage(error) {
 
@@ -26,25 +34,22 @@ function ProductDetailsPage() {
     const [product, setProduct] = useState(null);
     const [selectedSize, setSelectedSize] = useState("");
     const [errorMessage, setErrorMessage] = useState("");
-    const [actionMessage, setActionMessage] = useState("");
-    const navigate = useNavigate();
+    const [cartFeedback, setCartFeedback] = useState("");
 
     const [similarProducts, setSimilarProducts] = useState([]);
 
     useEffect(() => {
 
-        fetchProductDetails(id)
-            .then(product => {
-
+        Promise.all([
+            fetchProductDetails(id),
+            fetchSimilarProducts(id).catch(() => [])
+        ])
+            .then(([product, similar]) => {
                 setProduct(product);
+                setSelectedSize("");
                 setErrorMessage("");
-                setActionMessage("");
-
-                return fetchSimilarProducts(id)
-                    .then(setSimilarProducts)
-                    .catch(() => {
-                        setSimilarProducts([]);
-                    });
+                setCartFeedback("");
+                setSimilarProducts(similar);
             })
             .catch(error => {
                 setProduct(null);
@@ -59,11 +64,11 @@ function ProductDetailsPage() {
     const addToCart = () => {
 
         if (!selectedSize) {
-            setActionMessage("Please select a size");
+            setCartFeedback("Please select a size");
             return;
         }
 
-        setActionMessage(
+        setCartFeedback(
             `Added ${product.name} (${selectedSize}) to cart`
         );
     };
@@ -171,11 +176,24 @@ function ProductDetailsPage() {
                     <div
                         style={{
                             display: "grid",
-                            gridTemplateColumns: "280px 1fr",
+                            gridTemplateColumns: "360px 1fr",
                             gap: "40px"
                         }}
                     >
                         <div>
+                            <img
+                                src={product.imageUrl}
+                                alt={product.name}
+                                style={{
+                                    width: "100%",
+                                    height: "520px",
+                                    objectFit: "cover",
+                                    objectPosition: "center top",
+                                    borderRadius: "12px",
+                                    marginBottom: "24px"
+                                }}
+                            />
+
                             <div
                                 style={{
                                     fontWeight: "600",
@@ -198,7 +216,7 @@ function ProductDetailsPage() {
                                         disabled={!sizeOption.available}
                                         onClick={() => {
                                             setSelectedSize(sizeOption.size);
-                                            setActionMessage("");
+                                            setCartFeedback("");
                                         }}
                                         style={{
                                             width: "50px",
@@ -242,7 +260,7 @@ function ProductDetailsPage() {
                                         color: "#111827"
                                     }}
                                 >
-                                    {product.estimatedDelivery}
+                                    {formatDeliveryDate(product.estimatedDelivery)}
                                 </div>
                             </div>
                         </div>
@@ -354,7 +372,7 @@ function ProductDetailsPage() {
                                 Add To Cart
                             </button>
 
-                            {actionMessage && (
+                            {cartFeedback && (
                                 <div
                                     role="status"
                                     style={{
@@ -367,7 +385,7 @@ function ProductDetailsPage() {
                                         textAlign: "center"
                                     }}
                                 >
-                                    {actionMessage}
+                                    {cartFeedback}
                                 </div>
                             )}
 
@@ -404,23 +422,34 @@ function ProductDetailsPage() {
                             >
                                 {similarProducts.map(similarProduct => (
 
-                                    <div
+                                    <Link
                                         key={similarProduct.id}
-                                        onClick={() =>
-                                            navigate(
-                                                `/products/${similarProduct.id}`
-                                            )
-                                        }
+                                        to={`/products/${similarProduct.id}`}
                                         style={{
+                                            display: "block",
+                                            textDecoration: "none",
+                                            color: "inherit",
                                             minWidth: "260px",
                                             background: "#f8fafc",
                                             border: "1px solid #e5e7eb",
                                             borderRadius: "12px",
                                             padding: "16px",
-                                            cursor: "pointer",
                                             flexShrink: 0
                                         }}
                                     >
+                                        <img
+                                            src={similarProduct.imageUrl}
+                                            alt={similarProduct.name}
+                                            style={{
+                                                width: "100%",
+                                                height: "260px",
+                                                objectFit: "cover",
+                                                objectPosition: "center top",
+                                                borderRadius: "10px",
+                                                marginBottom: "12px"
+                                            }}
+                                        />
+
                                         <div
                                             style={{
                                                 fontSize: "12px",
@@ -460,9 +489,9 @@ function ProductDetailsPage() {
                                                 fontSize: "14px"
                                             }}
                                         >
-                                            Delivery by {similarProduct.estimatedDelivery}
+                                            Delivery by {formatDeliveryDate(similarProduct.estimatedDelivery)}
                                         </div>
-                                    </div>
+                                    </Link>
 
                                 ))}
                             </div>

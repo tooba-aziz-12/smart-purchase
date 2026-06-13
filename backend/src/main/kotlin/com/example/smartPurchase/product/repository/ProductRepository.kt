@@ -30,7 +30,7 @@ interface ProductRepository : JpaRepository<Product, Long> {
         )
         """
     )
-    fun search(
+    fun findProducts(
         @Param("category") category: String?,
         @Param("minPrice") minPrice: BigDecimal?,
         @Param("maxPrice") maxPrice: BigDecimal?,
@@ -84,6 +84,7 @@ interface ProductRepository : JpaRepository<Product, Long> {
                 p.name AS name,
                 p.category AS category,
                 p.price AS price,
+                p.imageUrl AS imageUrl,
                 wi.size AS size,
                 wi.quantity AS quantity
             FROM Product p

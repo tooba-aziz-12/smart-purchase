@@ -6,7 +6,8 @@ CREATE TABLE products (
                           id BIGINT PRIMARY KEY,
                           name VARCHAR(255) NOT NULL,
                           category VARCHAR(255) NOT NULL,
-                          price DECIMAL(10,2) NOT NULL
+                          price DECIMAL(10,2) NOT NULL,
+                          image_url VARCHAR(500) NOT NULL
 );
 
 CREATE TABLE warehouses (

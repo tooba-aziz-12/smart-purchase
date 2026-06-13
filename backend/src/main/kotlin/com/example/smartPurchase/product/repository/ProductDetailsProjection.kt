@@ -13,6 +13,8 @@ interface ProductDetailsProjection {
 
     fun getPrice(): BigDecimal
 
+    fun getImageUrl(): String
+
     fun getSize(): ProductSize?
 
     fun getQuantity(): Int?

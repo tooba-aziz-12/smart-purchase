@@ -41,6 +41,7 @@ class ProductControllerIT {
         val products = productPage.content
 
         assertEquals(12, products.size)
+        assertEquals("/products/Blue Lawn Suit.png", products.first().imageUrl)
         assertEquals(0, productPage.page)
         assertEquals(12, productPage.size)
         assertEquals(12, productPage.totalElements)
@@ -253,10 +254,21 @@ class ProductControllerIT {
     }
 
     @Test
-    fun `should reject unsupported page size`() {
+    fun `should reject page size of zero`() {
 
         mockMvc.get("/products") {
             param("pageSize", "0")
+        }
+            .andExpect {
+                status { isBadRequest() }
+            }
+    }
+
+    @Test
+    fun `should reject page size exceeding maximum`() {
+
+        mockMvc.get("/products") {
+            param("pageSize", "51")
         }
             .andExpect {
                 status { isBadRequest() }
@@ -311,7 +323,8 @@ class ProductControllerIT {
             )
 
         assertEquals(1L, product.id)
-        assertEquals("Blue Lawn Suit", product.name)
+        assertEquals("Sky Blue Embroidered Lawn Suit", product.name)
+        assertEquals("/products/Blue Lawn Suit.png", product.imageUrl)
 
         assertEquals(3, product.sizes.size)
 
@@ -332,6 +345,12 @@ class ProductControllerIT {
                 it.size == "L"
             }.available
         )
+
+        assertEquals(0, product.priceBreakdown.productPrice.compareTo(BigDecimal("7500")))
+        assertEquals(0, product.priceBreakdown.platformFee.compareTo(BigDecimal("200")))
+        assertEquals(0, product.priceBreakdown.deliveryFee.compareTo(BigDecimal("250")))
+        assertEquals(0, product.priceBreakdown.vat.compareTo(BigDecimal("1125")))
+        assertEquals(0, product.priceBreakdown.total.compareTo(BigDecimal("9075")))
     }
 
     @Test
@@ -350,6 +369,11 @@ class ProductControllerIT {
             )
 
         assertTrue(products.isNotEmpty())
+        assertTrue(
+            products.all {
+                it.imageUrl.startsWith("/products/")
+            }
+        )
 
         assertTrue(
             products.none {

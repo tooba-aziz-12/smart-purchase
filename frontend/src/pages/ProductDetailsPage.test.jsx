@@ -46,9 +46,10 @@ describe("ProductDetailsPage", () => {
 
         fetchProductDetails.mockResolvedValue({
             id: 1,
-            name: "Blue Lawn Suit",
+            name: "Sky Blue Embroidered Lawn Suit",
             category: "Lawn",
             price: 7500,
+            imageUrl: "/products/Blue Lawn Suit.png",
             estimatedDelivery: "2026-06-18",
             sizes: [
                 {
@@ -76,9 +77,10 @@ describe("ProductDetailsPage", () => {
         fetchSimilarProducts.mockResolvedValue([
             {
                 id: 2,
-                name: "Green Lawn Suit",
+                name: "Mint Green Embroidered Lawn Suit",
                 category: "Lawn",
                 price: 6900,
+                imageUrl: "/products/Green Lawn suit.png",
                 estimatedDelivery: "2026-06-18"
             }
         ]);
@@ -98,7 +100,7 @@ describe("ProductDetailsPage", () => {
             await screen.findByRole(
                 "heading",
                 {
-                    name: "Blue Lawn Suit"
+                    name: "Sky Blue Embroidered Lawn Suit"
                 }
             )
         ).toBeTruthy();
@@ -108,7 +110,23 @@ describe("ProductDetailsPage", () => {
         expect(screen.getByText("PKR 250")).toBeTruthy();
         expect(screen.getByText("PKR 1192.5")).toBeTruthy();
         expect(screen.getByText("PKR 9142.5")).toBeTruthy();
-        expect(screen.getByText("Green Lawn Suit")).toBeTruthy();
+        expect(screen.getByText("Mint Green Embroidered Lawn Suit")).toBeTruthy();
+        expect(
+            screen.getByRole(
+                "img",
+                {
+                    name: "Sky Blue Embroidered Lawn Suit"
+                }
+            ).getAttribute("src")
+        ).toBe("/products/Blue Lawn Suit.png");
+        expect(
+            screen.getByRole(
+                "img",
+                {
+                    name: "Mint Green Embroidered Lawn Suit"
+                }
+            ).getAttribute("src")
+        ).toBe("/products/Green Lawn suit.png");
 
         expect(
             screen.getByRole(
@@ -154,7 +172,7 @@ describe("ProductDetailsPage", () => {
         expect(
             screen.getByRole("status").textContent
         ).toBe(
-            "Added Blue Lawn Suit (M) to cart"
+            "Added Sky Blue Embroidered Lawn Suit (M) to cart"
         );
     });
 
@@ -162,9 +180,10 @@ describe("ProductDetailsPage", () => {
 
         fetchProductDetails.mockResolvedValue({
             id: 6,
-            name: "Maroon Formal Suit",
+            name: "Maroon Formal Embroidered Suit",
             category: "Formal",
             price: 12500,
+            imageUrl: "/products/Maroon Formal Suit.png",
             estimatedDelivery: "2026-06-18",
             sizes: [
                 {
@@ -206,7 +225,7 @@ describe("ProductDetailsPage", () => {
             await screen.findByRole(
                 "heading",
                 {
-                    name: "Maroon Formal Suit"
+                    name: "Maroon Formal Embroidered Suit"
                 }
             )
         ).toBeTruthy();

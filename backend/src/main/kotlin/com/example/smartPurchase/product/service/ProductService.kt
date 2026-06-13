@@ -44,7 +44,7 @@ class ProductService(
 
         val parsedSize = size?.let(ProductSize::valueOf)
 
-        val productPage = productRepository.search(
+        val productPage = productRepository.findProducts(
             category,
             minPrice,
             maxPrice,
@@ -85,7 +85,7 @@ class ProductService(
     }
 
     fun getSimilarProducts(productId: Long): List<ProductResponse> {
-        if (productRepository.findProductDetails(productId).isEmpty()) {
+        if (!productRepository.existsById(productId)) {
             throw ProductNotFoundException("Product not found")
         }
 
@@ -127,6 +127,7 @@ class ProductService(
             name = product.name,
             category = product.category,
             price = product.price,
+            imageUrl = product.imageUrl,
             estimatedDelivery = deliveryEstimator.estimateDelivery(),
             availableSizes = orderSizes(availableSizes)
         )
@@ -194,12 +195,9 @@ class ProductService(
 
         val deliveryFee = pricingProperties.deliveryFee
 
-        val vat = (
-                productPrice
-                    .add(platformFee)
-                    .add(deliveryFee)
-                )
-            .multiply(pricingProperties.vatRate)
+        // GST in Pakistan applies to the product value only.
+        // Platform and delivery fees carry separate tax treatment at the intermediary level.
+        val vat = productPrice.multiply(pricingProperties.vatRate)
 
         val total = productPrice
             .add(platformFee)
@@ -211,6 +209,7 @@ class ProductService(
             name = product.getName(),
             category = product.getCategory(),
             price = product.getPrice(),
+            imageUrl = product.getImageUrl(),
             estimatedDelivery = deliveryEstimator.estimateDelivery(),
             sizes = allSizes.map { size ->
                 SizeOptionResponse(

@@ -8,6 +8,7 @@ data class ProductDetailsResponse(
     val name: String,
     val category: String,
     val price: BigDecimal,
+    val imageUrl: String,
     val estimatedDelivery: LocalDate,
     val sizes: List<SizeOptionResponse>,
     val priceBreakdown: PriceBreakdownResponse

@@ -44,9 +44,10 @@ describe("ProductListPage", () => {
             productPage([
                 {
                     id: 1,
-                    name: "Blue Lawn Suit",
+                    name: "Sky Blue Embroidered Lawn Suit",
                     category: "Lawn",
                     price: 7500,
+                    imageUrl: "/products/Blue Lawn Suit.png",
                     estimatedDelivery: "2026-06-18",
                     availableSizes: ["M", "L"]
                 }
@@ -60,8 +61,17 @@ describe("ProductListPage", () => {
         );
 
         expect(
-            await screen.findByText("Blue Lawn Suit")
+            await screen.findByText("Sky Blue Embroidered Lawn Suit")
         ).toBeTruthy();
+
+        expect(
+            screen.getByRole(
+                "img",
+                {
+                    name: "Sky Blue Embroidered Lawn Suit"
+                }
+            ).getAttribute("src")
+        ).toBe("/products/Blue Lawn Suit.png");
 
         const user = userEvent.setup();
         const filters = screen.getAllByRole("combobox");
@@ -106,9 +116,10 @@ describe("ProductListPage", () => {
                 [
                     {
                         id: 1,
-                        name: "Blue Lawn Suit",
+                        name: "Sky Blue Embroidered Lawn Suit",
                         category: "Lawn",
                         price: 7500,
+                        imageUrl: "/products/Blue Lawn Suit.png",
                         estimatedDelivery: "2026-06-18",
                         availableSizes: ["M", "L"]
                     }
@@ -130,6 +141,7 @@ describe("ProductListPage", () => {
                         name: "Formal Silk Suit",
                         category: "Formal",
                         price: 9500,
+                        imageUrl: "/products/Maroon Formal Suit.png",
                         estimatedDelivery: "2026-06-18",
                         availableSizes: ["S"]
                     }
@@ -150,7 +162,7 @@ describe("ProductListPage", () => {
         );
 
         expect(
-            await screen.findByText("Blue Lawn Suit")
+            await screen.findByText("Sky Blue Embroidered Lawn Suit")
         ).toBeTruthy();
 
         const user = userEvent.setup();
